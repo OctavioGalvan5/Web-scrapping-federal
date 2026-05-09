@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - Scraper PJN{% endblock %}
+
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-house"></i> Dashboard</h4>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm">
+      <div class="card-body">
+        <div class="display-6 fw-bold text-primary">{{ stats.total }}</div>
+        <div class="text-muted small">Total expedientes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm">
+      <div class="card-body">
+        <div class="display-6 fw-bold text-success">{{ stats.del_scraper }}</div>
+        <div class="text-muted small">Del scraper</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm">
+      <div class="card-body">
+        <div class="display-6 fw-bold text-warning">{{ stats.manuales }}</div>
+        <div class="text-muted small">Manuales</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center border-0 shadow-sm">
+      <div class="card-body">
+        <div class="display-6 fw-bold text-info">{{ stats.hoy }}</div>
+        <div class="text-muted small">Cargados hoy</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Últimas ejecuciones -->
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-dark text-white">
+        <i class="bi bi-clock-history"></i> Últimas ejecuciones del scraper
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Fecha buscada</th>
+              <th>Ejecución</th>
+              <th>Nuevos</th>
+              <th>Rep.</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in ultimas_runs %}
+            <tr>
+              <td>{{ r.fecha_buscada.strftime('%d/%m/%Y') if r.fecha_buscada else '-' }}</td>
+              <td class="text-muted small">{{ r.fecha_ejecucion.strftime('%d/%m %H:%M') if r.fecha_ejecucion else '-' }}</td>
+              <td><span class="badge bg-success">{{ r.nuevos }}</span></td>
+              <td><span class="badge bg-warning text-dark">{{ r.repetidos }}</span></td>
+              <td>
+                {% if r.resultado == 'ok' %}
+                  <span class="badge bg-success">OK</span>
+                {% else %}
+                  <span class="badge bg-danger">Error</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-3">Sin ejecuciones aún</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Próximos vencimientos -->
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-warning text-dark">
+        <i class="bi bi-alarm"></i> Próximos vencimientos
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Expediente</th>
+              <th>Vencimiento</th>
+              <th>Días</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in proximos_vencimientos %}
+            <tr>
+              <td>
+                <div class="fw-bold small">{{ v.numero_expte }}</div>
+                <div class="text-muted" style="font-size:0.75rem">{{ (v.caratula or '')[:40] }}</div>
+              </td>
+              <td class="small">{{ v.fecha_vencimiento.strftime('%d/%m/%Y') if v.fecha_vencimiento else '-' }}</td>
+              <td>
+                {% if v.dias_restantes is not none %}
+                  <span class="badge {% if v.dias_restantes <= 3 %}bg-danger{% elif v.dias_restantes <= 7 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                    {{ v.dias_restantes }}d
+                  </span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted py-3">Sin vencimientos próximos</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

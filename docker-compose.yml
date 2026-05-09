@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - DOCKER_ENV=1
+      - CHROMEDRIVER_PATH=/usr/bin/chromedriver
+      - CHROME_BIN=/usr/bin/chromium
+    restart: unless-stopped
+    shm_size: '256mb'

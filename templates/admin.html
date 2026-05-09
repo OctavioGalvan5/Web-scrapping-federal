@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Admin - Scraper PJN{% endblock %}
+
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-shield-lock"></i> Administración de Licencias</h4>
+
+<div class="row g-3">
+
+  <!-- Agregar licencia -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-success text-white fw-bold">
+        <i class="bi bi-plus-circle"></i> Nueva licencia
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Machine ID</label>
+          <input type="text" id="new_machine_id" class="form-control form-control-sm" placeholder="abc123def456">
+          <div class="form-text">El cliente lo obtiene al ejecutar el programa</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Email del usuario</label>
+          <input type="email" id="new_email" class="form-control form-control-sm" placeholder="cliente@ejemplo.com">
+        </div>
+        <button class="btn btn-success w-100" onclick="crearLicencia()">
+          <i class="bi bi-plus"></i> Crear licencia
+        </button>
+        <div id="create_result" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla de licencias -->
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-dark text-white fw-bold">
+        <i class="bi bi-list-check"></i> Licencias registradas
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>ID</th>
+              <th>Machine ID</th>
+              <th>Email</th>
+              <th>Estado</th>
+              <th>Creada</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody_licencias">
+            {% for l in licencias %}
+            <tr id="row_{{ l.id }}">
+              <td class="text-muted small">{{ l.id }}</td>
+              <td><code class="small">{{ l.machine_id }}</code></td>
+              <td class="small">{{ l.user_email }}</td>
+              <td>
+                {% if l.active %}
+                  <span class="badge bg-success">Activa</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inactiva</span>
+                {% endif %}
+              </td>
+              <td class="text-muted small">{{ l.created_at.strftime('%d/%m/%Y') if l.created_at else '' }}</td>
+              <td>
+                <button class="btn btn-sm btn-outline-warning" onclick="toggleLicencia({{ l.id }})" title="Activar/Desactivar">
+                  <i class="bi bi-toggle-on"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminarLicencia({{ l.id }})" title="Eliminar">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center py-3 text-muted">Sin licencias registradas</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function crearLicencia() {
+  const machine_id = document.getElementById('new_machine_id').value.trim();
+  const user_email = document.getElementById('new_email').value.trim();
+  if (!machine_id || !user_email) { alert('Completá ambos campos'); return; }
+
+  const resp = await fetch('/admin/licencias', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ machine_id, user_email })
+  });
+  const data = await resp.json();
+  const div = document.getElementById('create_result');
+
+  if (data.ok) {
+    div.innerHTML = '<div class="alert alert-success py-2">✅ Licencia creada</div>';
+    document.getElementById('new_machine_id').value = '';
+    document.getElementById('new_email').value = '';
+    setTimeout(() => location.reload(), 1000);
+  } else {
+    div.innerHTML = `<div class="alert alert-danger py-2">${data.error}</div>`;
+  }
+}
+
+async function toggleLicencia(id) {
+  const resp = await fetch(`/admin/licencias/${id}/toggle`, { method: 'POST' });
+  const data = await resp.json();
+  if (data.ok) location.reload();
+}
+
+async function eliminarLicencia(id) {
+  if (!confirm('¿Eliminar esta licencia?')) return;
+  const resp = await fetch(`/admin/licencias/${id}`, { method: 'DELETE' });
+  const data = await resp.json();
+  if (data.ok) document.getElementById(`row_${id}`).remove();
+}
+</script>
+{% endblock %}

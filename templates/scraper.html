@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% block title %}Scraper - PJN{% endblock %}
+
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-robot"></i> Scraper de Expedientes</h4>
+
+<div class="row g-3">
+
+  <!-- Panel de configuración -->
+  <div class="col-lg-4">
+
+    <!-- Extracción -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-success text-white fw-bold">
+        <i class="bi bi-clipboard-data"></i> Extracción
+      </div>
+      <div class="card-body">
+        <div class="mb-2">
+          <label class="form-label small fw-bold">Fecha a buscar</label>
+          <input type="text" id="fecha" class="form-control form-control-sm" placeholder="DD/MM/YYYY">
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col">
+            <label class="form-label small fw-bold">Páginas</label>
+            <input type="number" id="paginas" class="form-control form-control-sm" value="6" min="1" max="50">
+          </div>
+          <div class="col">
+            <label class="form-label small fw-bold">Filas DEOX</label>
+            <input type="number" id="filas_deox" class="form-control form-control-sm" value="10" min="1" max="100">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- APIs -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-secondary text-white fw-bold">
+        <i class="bi bi-key"></i> APIs
+      </div>
+      <div class="card-body">
+        <div class="mb-2">
+          <label class="form-label small fw-bold">API Key Gemini</label>
+          <input type="password" id="gemini_api" class="form-control form-control-sm" placeholder="AIza...">
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-bold">API Key 2Captcha</label>
+          <input type="password" id="captcha_api" class="form-control form-control-sm">
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="show_apis">
+          <label class="form-check-label small" for="show_apis">Mostrar API Keys</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credenciales -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-dark text-white fw-bold">
+        <i class="bi bi-person-lock"></i> Credenciales PJN
+      </div>
+      <div class="card-body">
+        <div class="mb-2">
+          <label class="form-label small fw-bold">Usuario</label>
+          <input type="text" id="usuario" class="form-control form-control-sm">
+        </div>
+        <div class="mb-2">
+          <label class="form-label small fw-bold">Contraseña</label>
+          <input type="password" id="password" class="form-control form-control-sm">
+        </div>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="show_pass">
+          <label class="form-check-label small" for="show_pass">Mostrar contraseña</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="headless" checked>
+          <label class="form-check-label small" for="headless">Modo headless (sin ventana)</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="d-grid gap-2">
+      <button id="btn_extraer" class="btn btn-success" onclick="iniciarProceso('extraccion')">
+        <i class="bi bi-download"></i> Extraer Expedientes
+      </button>
+      <button id="btn_analisis" class="btn btn-primary" onclick="iniciarProceso('analisis')">
+        <i class="bi bi-cpu"></i> Analizar con IA
+      </button>
+      <button id="btn_vencimientos" class="btn btn-warning" onclick="iniciarProceso('vencimientos')">
+        <i class="bi bi-alarm"></i> Analizar Vencimientos
+      </button>
+    </div>
+  </div>
+
+  <!-- Terminal -->
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-terminal"></i> Terminal</span>
+        <div>
+          <span id="status_badge" class="badge bg-secondary me-2">Inactivo</span>
+          <button class="btn btn-sm btn-outline-light" onclick="limpiarTerminal()">
+            <i class="bi bi-trash"></i> Limpiar
+          </button>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <pre id="terminal" class="terminal-box mb-0">🚀 Scraper de Expedientes con Análisis IA
+📋 Configure los parámetros y presione un botón
+════════════════════════════════════════════════════════════
+
+</pre>
+      </div>
+      <div class="card-footer bg-dark">
+        <div id="progress_bar" class="progress" style="display:none; height:4px;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width:100%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let eventoSource = null;
+let procesoActivo = false;
+
+// Setear fecha de hoy
+document.getElementById('fecha').value = new Date().toLocaleDateString('es-AR', {
+  day: '2-digit', month: '2-digit', year: 'numeric'
+}).replace(/\//g, '/');
+
+document.getElementById('show_pass').addEventListener('change', function() {
+  document.getElementById('password').type = this.checked ? 'text' : 'password';
+});
+document.getElementById('show_apis').addEventListener('change', function() {
+  const t = this.checked ? 'text' : 'password';
+  document.getElementById('gemini_api').type = t;
+  document.getElementById('captcha_api').type = t;
+});
+
+function limpiarTerminal() {
+  document.getElementById('terminal').textContent = '';
+}
+
+function escribir(texto) {
+  const t = document.getElementById('terminal');
+  t.textContent += texto;
+  t.scrollTop = t.scrollHeight;
+}
+
+function setEstado(activo, texto, color) {
+  procesoActivo = activo;
+  const badge = document.getElementById('status_badge');
+  badge.textContent = texto;
+  badge.className = `badge bg-${color} me-2`;
+  document.getElementById('progress_bar').style.display = activo ? 'block' : 'none';
+  ['btn_extraer','btn_analisis','btn_vencimientos'].forEach(id => {
+    document.getElementById(id).disabled = activo;
+  });
+}
+
+async function iniciarProceso(tipo) {
+  if (procesoActivo) return;
+
+  const fecha      = document.getElementById('fecha').value.trim();
+  const paginas    = document.getElementById('paginas').value;
+  const filas_deox = document.getElementById('filas_deox').value;
+  const usuario    = document.getElementById('usuario').value.trim();
+  const password   = document.getElementById('password').value.trim();
+  const headless   = document.getElementById('headless').checked;
+  const gemini_api = document.getElementById('gemini_api').value.trim();
+  const captcha_api= document.getElementById('captcha_api').value.trim();
+
+  if (!usuario || !password) { alert('Ingrese usuario y contraseña'); return; }
+
+  let url, payload, labelActivo, colorActivo;
+
+  if (tipo === 'extraccion') {
+    if (!fecha) { alert('Ingrese una fecha'); return; }
+    url = '/scraper/iniciar_extraccion';
+    payload = { fecha, paginas, usuario, password, headless, filas_deox };
+    labelActivo = 'Extrayendo...';
+    colorActivo = 'success';
+  } else if (tipo === 'analisis') {
+    if (!gemini_api || !captcha_api) { alert('Ingrese las API Keys'); return; }
+    url = '/scraper/iniciar_analisis';
+    payload = { usuario, password, headless, gemini_api, captcha_api };
+    labelActivo = 'Analizando con IA...';
+    colorActivo = 'primary';
+  } else {
+    if (!gemini_api || !captcha_api) { alert('Ingrese las API Keys'); return; }
+    url = '/scraper/iniciar_vencimientos';
+    payload = { gemini_api, captcha_api, headless };
+    labelActivo = 'Analizando vencimientos...';
+    colorActivo = 'warning';
+  }
+
+  limpiarTerminal();
+  setEstado(true, labelActivo, colorActivo);
+
+  let task_id;
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) {
+      const txt = await resp.text();
+      escribir(`\n❌ Error del servidor (${resp.status}):\n${txt}\n`);
+      setEstado(false, 'Error', 'danger');
+      return;
+    }
+    ({ task_id } = await resp.json());
+  } catch (err) {
+    escribir(`\n❌ No se pudo conectar con el servidor:\n${err}\n`);
+    setEstado(false, 'Error', 'danger');
+    return;
+  }
+
+  if (eventoSource) eventoSource.close();
+  eventoSource = new EventSource(`/scraper/stream/${task_id}`);
+
+  eventoSource.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    if (data.done) {
+      eventoSource.close();
+      setEstado(false, 'Completado', 'success');
+      escribir('\n✅ Proceso finalizado\n');
+    } else if (data.text) {
+      escribir(data.text);
+    }
+  };
+
+  eventoSource.onerror = function() {
+    eventoSource.close();
+    setEstado(false, 'Error', 'danger');
+    escribir('\n❌ Se perdió la conexión con el servidor\n');
+  };
+}
+</script>
+{% endblock %}

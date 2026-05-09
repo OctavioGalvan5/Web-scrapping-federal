@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+{% block title %}Expedientes - PJN{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4><i class="bi bi-table"></i> Expedientes</h4>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalImportar">
+      <i class="bi bi-upload"></i> Importar Excel
+    </button>
+    <button class="btn btn-success btn-sm" onclick="exportar()">
+      <i class="bi bi-download"></i> Exportar Excel
+    </button>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small fw-bold">Búsqueda</label>
+        <input type="text" id="f_busqueda" class="form-control form-control-sm" placeholder="Número, carátula, actor...">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Dependencia</label>
+        <input type="text" id="f_dependencia" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Jurisdicción</label>
+        <input type="text" id="f_jurisdiccion" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Origen</label>
+        <select id="f_origen" class="form-select form-select-sm">
+          <option value="todos">Todos</option>
+          <option value="scraper">Scraper</option>
+          <option value="manual">Manual</option>
+        </select>
+      </div>
+      <div class="col-md-1">
+        <label class="form-label small fw-bold">Desde</label>
+        <input type="date" id="f_fecha_desde" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-1">
+        <label class="form-label small fw-bold">Hasta</label>
+        <input type="date" id="f_fecha_hasta" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-1 d-flex gap-1">
+        <button class="btn btn-primary btn-sm w-100" onclick="cargarDatos()">
+          <i class="bi bi-search"></i>
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="limpiarFiltros()" title="Limpiar">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-list-ul"></i> Resultados</span>
+    <span id="total_badge" class="badge bg-secondary">0 expedientes</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0" id="tabla_exptes">
+        <thead class="table-dark">
+          <tr>
+            <th>Expediente</th>
+            <th>Carátula</th>
+            <th>Dependencia</th>
+            <th>Jurisdicción</th>
+            <th>Sit. Actual</th>
+            <th>Actor/Nombre</th>
+            <th>Letrado</th>
+            <th>Fecha Ingreso</th>
+            <th>Origen</th>
+          </tr>
+        </thead>
+        <tbody id="tbody_exptes">
+          <tr><td colspan="9" class="text-center py-4 text-muted">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Importar Excel -->
+<div class="modal fade" id="modalImportar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-upload"></i> Importar Excel manual</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small">
+          Seleccioná un Excel con columnas: <code>Número, Año, Carátula, Dependencia</code> (y otras opcionales).<br>
+          Los duplicados se detectan automáticamente por <strong>Número/Año</strong>.
+        </p>
+        <input type="file" id="archivo_excel" class="form-control" accept=".xlsx,.xls">
+        <div id="import_result" class="mt-3" style="display:none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-success" onclick="importar()">
+          <i class="bi bi-upload"></i> Importar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getFiltros() {
+  return new URLSearchParams({
+    busqueda:     document.getElementById('f_busqueda').value,
+    dependencia:  document.getElementById('f_dependencia').value,
+    jurisdiccion: document.getElementById('f_jurisdiccion').value,
+    origen:       document.getElementById('f_origen').value,
+    fecha_desde:  document.getElementById('f_fecha_desde').value,
+    fecha_hasta:  document.getElementById('f_fecha_hasta').value,
+  });
+}
+
+function limpiarFiltros() {
+  ['f_busqueda','f_dependencia','f_jurisdiccion','f_fecha_desde','f_fecha_hasta'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('f_origen').value = 'todos';
+  cargarDatos();
+}
+
+async function cargarDatos() {
+  const params = getFiltros();
+  const resp = await fetch('/expedientes/datos?' + params);
+  const { data, total } = await resp.json();
+
+  document.getElementById('total_badge').textContent = `${total} expedientes`;
+
+  const tbody = document.getElementById('tbody_exptes');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Sin resultados</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td class="fw-bold small">${r.numero_expte || ''}</td>
+      <td class="small" title="${r.caratula || ''}">${(r.caratula || '').substring(0,50)}${(r.caratula||'').length>50?'…':''}</td>
+      <td class="small">${r.dependencia || ''}</td>
+      <td class="small">${r.jurisdiccion || ''}</td>
+      <td class="small">${r.situacion_actual || ''}</td>
+      <td class="small">${r.actor_nombre || ''}</td>
+      <td class="small">${(r.letrado_apoderado || '').substring(0,30)}</td>
+      <td class="small">${r.fecha_ingreso ? new Date(r.fecha_ingreso).toLocaleDateString('es-AR') : ''}</td>
+      <td><span class="badge ${r.origen === 'scraper' ? 'bg-success' : 'bg-warning text-dark'}">${r.origen}</span></td>
+    </tr>
+  `).join('');
+}
+
+function exportar() {
+  const params = getFiltros();
+  window.location.href = '/expedientes/exportar?' + params;
+}
+
+async function importar() {
+  const input = document.getElementById('archivo_excel');
+  if (!input.files.length) { alert('Seleccioná un archivo'); return; }
+
+  const form = new FormData();
+  form.append('archivo', input.files[0]);
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Importando...';
+
+  const resp = await fetch('/expedientes/importar', { method: 'POST', body: form });
+  const data = await resp.json();
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-upload"></i> Importar';
+
+  const div = document.getElementById('import_result');
+  div.style.display = 'block';
+
+  if (data.error) {
+    div.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+    return;
+  }
+
+  let html = `<div class="alert alert-success">✅ <strong>${data.nuevos}</strong> expedientes nuevos importados</div>`;
+
+  if (data.repetidos.length) {
+    html += `<div class="alert alert-warning">
+      <strong>⚠️ ${data.repetidos.length} ya existían (ignorados):</strong>
+      <ul class="mb-0 mt-2 small">
+        ${data.repetidos.map(r =>
+          `<li>${r.numero_expte} — ${r.caratula} <span class="text-muted">(${r.fecha}, ${r.origen})</span></li>`
+        ).join('')}
+      </ul>
+    </div>`;
+  }
+
+  if (data.errores) {
+    html += `<div class="alert alert-danger">❌ ${data.errores} filas con error</div>`;
+  }
+
+  div.innerHTML = html;
+  cargarDatos();
+}
+
+// Cargar al iniciar y con Enter en filtros
+cargarDatos();
+document.querySelectorAll('#f_busqueda,#f_dependencia,#f_jurisdiccion').forEach(el => {
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') cargarDatos(); });
+});
+</script>
+{% endblock %}
