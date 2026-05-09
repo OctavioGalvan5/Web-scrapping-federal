@@ -402,7 +402,7 @@ def hacer_click_intervinientes_y_extraer(driver):
     
     return datos_intervinientes
 
-def extraer_letrado_con_ia(html_tabla, gemini_api_key="AIzaSyCWLhuw0_N4WsoYg09QA1CX_Q1lomxZOBM"):
+def extraer_letrado_con_ia(html_tabla, gemini_api_key=None):
     """
     NUEVA FUNCIÓN: Usa IA para extraer el letrado apoderado principal del HTML de la tabla
     """
@@ -961,7 +961,7 @@ def paginar_tabla_expediente_mejorado(driver, tabla_id, textos_extraidos):
 
 # ==================== FUNCIONES PRINCIPALES CORREGIDAS ====================
 
-def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, headless=True, filas_deox=10, gemini_api_key="AIzaSyCWLhuw0_N4WsoYg09QA1CX_Q1lomxZOBM", captcha_api_key="7c608c4f6418b7e5faef68579a3e711d"):
+def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, headless=True, filas_deox=10, gemini_api_key=None, captcha_api_key=None):
     """Función principal de extracción de expedientes (VERSIÓN CORREGIDA)"""
     
     options = Options()
@@ -1138,7 +1138,7 @@ def procesar_notificaciones_mejorado(driver, fecha_objetivo, filas_consultas):
 
     return filas_notificaciones
 
-def analizar_expedientes_individuales(usuario, password, headless=True, gemini_api_key="AIzaSyCWLhuw0_N4WsoYg09QA1CX_Q1lomxZOBM", captcha_api_key="7c608c4f6418b7e5faef68579a3e711d"):
+def analizar_expedientes_individuales(usuario, password, headless=True, gemini_api_key=None, captcha_api_key=None):
     """
     FUNCIÓN PRINCIPAL MODIFICADA: Análisis individual de expedientes extrayendo info del HTML
     """

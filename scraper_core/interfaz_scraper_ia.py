@@ -38,13 +38,13 @@ class ScraperGUI:
         self.fecha_var = tk.StringVar(value=datetime.now().strftime("%d/%m/%Y"))
         self.paginas_var = tk.StringVar(value="6")
         self.usuario_var = tk.StringVar(value="20286335528")
-        self.password_var = tk.StringVar(value="sarmiento302")
+        self.password_var = tk.StringVar(value="")
         self.filas_deox_var = tk.StringVar(value="10")
         self.headless_var = tk.BooleanVar(value=True)
         
         # Nuevas variables para APIs
-        self.gemini_api_var = tk.StringVar(value="AIzaSyCWLhuw0_N4WsoYg09QA1CX_Q1lomxZOBM")
-        self.captcha_api_var = tk.StringVar(value="7c608c4f6418b7e5faef68579a3e711d")
+        self.gemini_api_var = tk.StringVar(value="")
+        self.captcha_api_var = tk.StringVar(value="")
         
         # Variables de control
         self.ejecutando_extraccion = False
