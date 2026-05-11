@@ -967,7 +967,7 @@ def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, hea
     options = Options()
     if headless:
         print("🔇 Modo HEADLESS activado - El navegador no será visible")
-        options.add_argument("--headless")
+        options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
@@ -975,10 +975,13 @@ def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, hea
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-plugins")
         options.add_argument("--disable-images")
+        options.add_argument("--disable-setuid-sandbox")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--single-process")
     else:
         print("🖥️ Modo NORMAL activado - El navegador será visible")
         options.add_argument("--start-maximized")
-    
+
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-web-security")
     options.add_argument("--allow-running-insecure-content")
@@ -1199,7 +1202,10 @@ def analizar_expedientes_individuales(usuario, password, headless=True, gemini_a
     # Configurar WebDriver
     options = Options()
     if headless:
-        options.add_argument('--headless')
+        options.add_argument('--headless=new')
+        options.add_argument('--disable-setuid-sandbox')
+        options.add_argument('--disable-software-rasterizer')
+        options.add_argument('--single-process')
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
