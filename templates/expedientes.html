@@ -158,7 +158,7 @@ async function cargarDatos() {
       <td class="small">${r.situacion_actual || ''}</td>
       <td class="small">${r.actor_nombre || ''}</td>
       <td class="small">${(r.letrado_apoderado || '').substring(0,30)}</td>
-      <td class="small">${r.fecha_ingreso ? new Date(r.fecha_ingreso).toLocaleDateString('es-AR') : ''}</td>
+      <td class="small">${r.fecha_ingreso ? r.fecha_ingreso.split('-').reverse().join('/') : ''}</td>
       <td><span class="badge ${r.origen === 'scraper' ? 'bg-success' : 'bg-warning text-dark'}">${r.origen}</span></td>
     </tr>
   `).join('');

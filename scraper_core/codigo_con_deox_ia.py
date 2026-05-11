@@ -1050,16 +1050,16 @@ def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, hea
             else:
                 print(f"   ⚠️ Fila {i+1}: No se pudo extraer de {fila['expediente']}")
         
-        # Guardar todos los datos
-        guardar_todos_en_excel(todos_los_datos, normalizar_fecha_para_excel(fecha_objetivo))
-        
         # Mostrar resumen final
         mostrar_resumen_final(filas_consultas, filas_notificaciones, filas_deox_resultado, fecha_objetivo)
+
+        return todos_los_datos
         
     except Exception as e:
         print(f"❌ Error durante la ejecución: {str(e)}")
         if headless:
             print("💡 Sugerencia: Si hay problemas en modo headless, pruebe con modo normal")
+        return []
     finally:
         print("🔄 Cerrando navegador...")
         driver.quit()
