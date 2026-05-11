@@ -72,10 +72,6 @@
             <th>Expediente</th>
             <th>Carátula</th>
             <th>Dependencia</th>
-            <th>Jurisdicción</th>
-            <th>Sit. Actual</th>
-            <th>Actor/Nombre</th>
-            <th>Letrado</th>
             <th>Fecha Ingreso</th>
             <th>Fuente</th>
             <th>Usuario</th>
@@ -83,7 +79,7 @@
           </tr>
         </thead>
         <tbody id="tbody_exptes">
-          <tr><td colspan="11" class="text-center py-4 text-muted">Cargando...</td></tr>
+          <tr><td colspan="7" class="text-center py-4 text-muted">Cargando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -150,7 +146,7 @@ async function cargarDatos() {
 
   const tbody = document.getElementById('tbody_exptes');
   if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Sin resultados</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Sin resultados</td></tr>';
     return;
   }
 
@@ -159,10 +155,6 @@ async function cargarDatos() {
       <td class="fw-bold small">${r.numero_expte || ''}</td>
       <td class="small" title="${r.caratula || ''}">${(r.caratula || '').substring(0,50)}${(r.caratula||'').length>50?'…':''}</td>
       <td class="small">${r.dependencia || ''}</td>
-      <td class="small">${r.jurisdiccion || ''}</td>
-      <td class="small">${r.situacion_actual || ''}</td>
-      <td class="small">${r.actor_nombre || ''}</td>
-      <td class="small">${(r.letrado_apoderado || '').substring(0,30)}</td>
       <td class="small">${r.fecha_ingreso ? r.fecha_ingreso.split('-').reverse().join('/') : ''}</td>
       <td><span class="badge bg-info text-dark">${r.fuente || '-'}</span></td>
       <td class="small">${r.usuario_extraccion || '-'}</td>
