@@ -53,7 +53,7 @@ def datos():
         f"""
         SELECT id, numero_expte, anio, caratula, dependencia, jurisdiccion,
                situacion_actual, actor_nombre, letrado_apoderado, cuit_cuil,
-               fecha_ingreso, origen, created_at
+               fecha_ingreso::text, origen, fuente, usuario_extraccion, created_at
         FROM expedientes
         {where}
         ORDER BY created_at DESC
@@ -97,6 +97,24 @@ def exportar():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
         download_name='expedientes_exportados.xlsx',
+    )
+
+
+@expedientes_bp.route('/plantilla')
+def plantilla():
+    df = pd.DataFrame(columns=[
+        'Número', 'Año', 'Carátula', 'Jurisdicción', 'Dependencia',
+        'Sit. Actual', 'Actor/Nombre', 'Letrado/Apoderado', 'Tomo/Folio', 'CUIT/CUIL'
+    ])
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Expedientes')
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='plantilla_expedientes.xlsx',
     )
 
 

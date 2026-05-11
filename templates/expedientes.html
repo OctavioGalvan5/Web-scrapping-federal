@@ -77,11 +77,13 @@
             <th>Actor/Nombre</th>
             <th>Letrado</th>
             <th>Fecha Ingreso</th>
+            <th>Fuente</th>
+            <th>Usuario</th>
             <th>Origen</th>
           </tr>
         </thead>
         <tbody id="tbody_exptes">
-          <tr><td colspan="9" class="text-center py-4 text-muted">Cargando...</td></tr>
+          <tr><td colspan="11" class="text-center py-4 text-muted">Cargando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -101,6 +103,9 @@
           Seleccioná un Excel con columnas: <code>Número, Año, Carátula, Dependencia</code> (y otras opcionales).<br>
           Los duplicados se detectan automáticamente por <strong>Número/Año</strong>.
         </p>
+        <a href="/expedientes/plantilla" class="btn btn-outline-secondary btn-sm mb-3">
+          <i class="bi bi-download"></i> Descargar plantilla
+        </a>
         <input type="file" id="archivo_excel" class="form-control" accept=".xlsx,.xls">
         <div id="import_result" class="mt-3" style="display:none"></div>
       </div>
@@ -145,7 +150,7 @@ async function cargarDatos() {
 
   const tbody = document.getElementById('tbody_exptes');
   if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Sin resultados</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-muted">Sin resultados</td></tr>';
     return;
   }
 
@@ -159,6 +164,8 @@ async function cargarDatos() {
       <td class="small">${r.actor_nombre || ''}</td>
       <td class="small">${(r.letrado_apoderado || '').substring(0,30)}</td>
       <td class="small">${r.fecha_ingreso ? r.fecha_ingreso.split('-').reverse().join('/') : ''}</td>
+      <td><span class="badge bg-info text-dark">${r.fuente || '-'}</span></td>
+      <td class="small">${r.usuario_extraccion || '-'}</td>
       <td><span class="badge ${r.origen === 'scraper' ? 'bg-success' : 'bg-warning text-dark'}">${r.origen}</span></td>
     </tr>
   `).join('');

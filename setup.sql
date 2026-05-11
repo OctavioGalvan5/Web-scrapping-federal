@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS expedientes (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS fuente VARCHAR(50);
+ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS usuario_extraccion VARCHAR(100);
+
 CREATE TABLE IF NOT EXISTS scraper_runs (
     id SERIAL PRIMARY KEY,
     fecha_buscada DATE NOT NULL,

@@ -57,8 +57,9 @@ try:
                 cur.execute("""
                     INSERT INTO expedientes
                         (numero_expte, anio, caratula, dependencia,
-                         situacion_actual, fecha_ingreso, origen)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                         situacion_actual, fecha_ingreso, origen,
+                         fuente, usuario_extraccion)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (numero_expte) DO NOTHING
                     RETURNING id
                 """, (
@@ -69,6 +70,8 @@ try:
                     fila.get('estado', ''),
                     fecha_dt,
                     'scraper',
+                    'deox',
+                    usuario,
                 ))
 
                 if cur.fetchone():
