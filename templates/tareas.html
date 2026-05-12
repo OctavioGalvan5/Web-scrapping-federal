@@ -35,6 +35,14 @@
           <option value="manual">Manual</option>
         </select>
       </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Estado Subida</label>
+        <select id="f_subido" class="form-select form-select-sm">
+          <option value="todos">Todos</option>
+          <option value="no" selected>No Subidos</option>
+          <option value="si">Ya Subidos</option>
+        </select>
+      </div>
       <div class="col-md-1">
         <label class="form-label small fw-bold">Desde</label>
         <input type="date" id="f_fecha_desde" class="form-control form-control-sm">
@@ -183,6 +191,7 @@ function getFiltros() {
     dependencia:  document.getElementById('f_dependencia').value,
     repetidos:    document.getElementById('f_repetidos').value,
     origen:       document.getElementById('f_origen').value,
+    subido:       document.getElementById('f_subido').value,
     fecha_desde:  document.getElementById('f_fecha_desde').value,
     fecha_hasta:  document.getElementById('f_fecha_hasta').value,
   });
@@ -216,6 +225,7 @@ async function cargarDatos() {
       <td class="fw-bold small">
         ${r.numero_expte || ''}
         ${r.es_repetido ? '<span class="badge bg-warning text-dark ms-1">rep</span>' : ''}
+        ${r.subido_a_tareas ? '<span class="badge bg-success ms-1" title="Ya enviado"><i class="bi bi-cloud-check"></i></span>' : ''}
       </td>
       <td class="small" title="${r.caratula || ''}">${(r.caratula || '').substring(0,60)}${(r.caratula||'').length>60?'…':''}</td>
       <td class="small">${r.fecha_ingreso ? r.fecha_ingreso.split('-').reverse().join('/') : ''}</td>

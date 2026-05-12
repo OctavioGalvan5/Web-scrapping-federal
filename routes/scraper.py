@@ -189,6 +189,9 @@ def subir_a_tareas():
         )
         if res and res.get('success'):
             exitos += 1
+            # Marcar como subido en la BD
+            from database.db import execute
+            execute("UPDATE expedientes SET subido_a_tareas = TRUE WHERE id = %s", (exp['id'],))
         else:
             errores += 1
             mensajes_error.append(res.get('error') if res else "Error desconocido")

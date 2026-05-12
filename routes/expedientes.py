@@ -42,6 +42,11 @@ def _build_filters(args):
         conditions.append("es_repetido = %s")
         params.append(is_rep)
 
+    if args.get('subido') and args['subido'] != 'todos':
+        is_subido = args['subido'] == 'si'
+        conditions.append("subido_a_tareas = %s")
+        params.append(is_subido)
+
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     return where, params
 
@@ -64,7 +69,8 @@ def datos():
             f"""
             SELECT id, numero_expte, anio, caratula, dependencia, jurisdiccion,
                    situacion_actual, actor_nombre, letrado_apoderado, cuit_cuil,
-                   fecha_ingreso::text, origen, fuente, usuario_extraccion, es_repetido, created_at
+                   fecha_ingreso::text, origen, fuente, usuario_extraccion, 
+                   es_repetido, subido_a_tareas, created_at
             FROM expedientes
             {where}
             ORDER BY created_at DESC

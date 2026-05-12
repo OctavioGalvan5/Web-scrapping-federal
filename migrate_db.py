@@ -6,7 +6,8 @@ def migrate():
         "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS fuente VARCHAR(50);",
         "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS usuario_extraccion VARCHAR(100);",
         "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS es_repetido BOOLEAN DEFAULT FALSE;",
-        "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS jurisdiccion VARCHAR(255);"
+        "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS jurisdiccion VARCHAR(255);",
+        "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS subido_a_tareas BOOLEAN DEFAULT FALSE;"
     ]
     
     with get_db() as conn:
