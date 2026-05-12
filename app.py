@@ -9,6 +9,13 @@ import config
 
 
 def create_app():
+    # Inicializar/Actualizar base de datos al arrancar
+    try:
+        migrate()
+        init_db()
+    except Exception as e:
+        print(f"Advertencia al inicializar BD: {e}")
+
     app = Flask(__name__)
     app.config['SECRET_KEY'] = config.SECRET_KEY
 
@@ -22,12 +29,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-
-    # Inicializar tablas al arrancar
-    try:
-        migrate()
-        init_db()
-    except Exception as e:
-        print(f"Advertencia al inicializar BD: {e}")
-
     app.run(debug=False, host='0.0.0.0', port=5000, threaded=True)
