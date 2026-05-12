@@ -54,40 +54,40 @@ try:
                     continue
                 numero_expte = f"{numero}/{ano}"
 
+                # Mismo expediente mismo dia -> ignorar
+                cur.execute(
+                    "SELECT id FROM expedientes WHERE numero_expte=%s AND fecha_ingreso=%s",
+                    (numero_expte, fecha_dt)
+                )
+                if cur.fetchone():
+                    repetidos.append({'numero_expte': numero_expte, 'caratula': fila.get('causa', '')[:60], 'fecha': fecha_dt.strftime('%d/%m/%Y'), 'origen': 'scraper'})
+                    continue
+
+                # Mismo expediente distinto dia -> guardar como repetido
+                cur.execute("SELECT id FROM expedientes WHERE numero_expte=%s", (numero_expte,))
+                es_repetido = cur.fetchone() is not None
+
                 cur.execute("""
                     INSERT INTO expedientes
                         (numero_expte, anio, caratula, dependencia,
                          situacion_actual, fecha_ingreso, origen,
-                         fuente, usuario_extraccion)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (numero_expte) DO NOTHING
+                         fuente, usuario_extraccion, es_repetido)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (numero_expte, fecha_ingreso) DO NOTHING
                     RETURNING id
                 """, (
-                    numero_expte,
-                    ano,
+                    numero_expte, ano,
                     fila.get('causa', ''),
                     fila.get('juzgado', ''),
                     fila.get('estado', ''),
-                    fecha_dt,
-                    'scraper',
-                    'deox',
-                    usuario,
+                    fecha_dt, 'scraper', 'deox', usuario, es_repetido,
                 ))
 
                 if cur.fetchone():
-                    nuevos += 1
-                else:
-                    cur.execute(
-                        "SELECT caratula, created_at::date, origen FROM expedientes WHERE numero_expte=%s",
-                        (numero_expte,)
-                    )
-                    ex = cur.fetchone()
-                    repetidos.append({
-                        'numero_expte': numero_expte,
-                        'caratula': (ex[0] or '')[:60] if ex else '',
-                        'fecha': ex[1].strftime('%d/%m/%Y') if ex else '',
-                        'origen': ex[2] if ex else '',
-                    })
+                    if es_repetido:
+                        repetidos.append({'numero_expte': numero_expte, 'caratula': fila.get('causa', '')[:60], 'fecha': fecha_dt.strftime('%d/%m/%Y'), 'origen': 'scraper'})
+                    else:
+                        nuevos += 1
 
         with conn.cursor() as cur:
             cur.execute("""

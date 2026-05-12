@@ -152,7 +152,10 @@ async function cargarDatos() {
 
   tbody.innerHTML = data.map(r => `
     <tr>
-      <td class="fw-bold small">${r.numero_expte || ''}</td>
+      <td class="fw-bold small">
+        ${r.numero_expte || ''}
+        ${r.es_repetido ? '<span class="badge bg-warning text-dark ms-1" title="Apareció en otra fecha">↩ rep</span>' : ''}
+      </td>
       <td class="small" title="${r.caratula || ''}">${(r.caratula || '').substring(0,50)}${(r.caratula||'').length>50?'…':''}</td>
       <td class="small">${r.dependencia || ''}</td>
       <td class="small">${r.fecha_ingreso ? r.fecha_ingreso.split('-').reverse().join('/') : ''}</td>

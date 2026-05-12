@@ -53,7 +53,7 @@ def datos():
         f"""
         SELECT id, numero_expte, anio, caratula, dependencia, jurisdiccion,
                situacion_actual, actor_nombre, letrado_apoderado, cuit_cuil,
-               fecha_ingreso::text, origen, fuente, usuario_extraccion, created_at
+               fecha_ingreso::text, origen, fuente, usuario_extraccion, es_repetido, created_at
         FROM expedientes
         {where}
         ORDER BY created_at DESC
@@ -197,14 +197,28 @@ def importar():
                             situacion_actual = get_col(row, ['Sit. Actual', 'Situacion Actual', 'situacion_actual'])
                             fecha_ingreso    = None
 
+                        # Mismo expediente mismo dia -> ignorar
+                        if fecha_ingreso:
+                            cur.execute(
+                                "SELECT id FROM expedientes WHERE numero_expte=%s AND fecha_ingreso=%s",
+                                (numero_expte, fecha_ingreso)
+                            )
+                            if cur.fetchone():
+                                repetidos.append({'numero_expte': numero_expte, 'caratula': caratula[:60], 'fecha': fecha_ingreso.strftime('%d/%m/%Y'), 'origen': 'manual'})
+                                continue
+
+                        # Mismo expediente distinto dia -> guardar como repetido
+                        cur.execute("SELECT id FROM expedientes WHERE numero_expte=%s", (numero_expte,))
+                        es_repetido = cur.fetchone() is not None
+
                         cur.execute("""
                             INSERT INTO expedientes
                                 (numero_expte, anio, caratula, dependencia,
                                  situacion_actual, fecha_ingreso, origen,
                                  jurisdiccion, actor_nombre, letrado_apoderado,
-                                 tomo_folio, cuit_cuil)
-                            VALUES (%s,%s,%s,%s,%s,%s,'manual',%s,%s,%s,%s,%s)
-                            ON CONFLICT (numero_expte) DO NOTHING
+                                 tomo_folio, cuit_cuil, es_repetido)
+                            VALUES (%s,%s,%s,%s,%s,%s,'manual',%s,%s,%s,%s,%s,%s)
+                            ON CONFLICT (numero_expte, fecha_ingreso) DO NOTHING
                             RETURNING id
                         """, (
                             numero_expte, anio, caratula, dependencia,
@@ -214,22 +228,14 @@ def importar():
                             get_col(row, ['Letrado/Apoderado', 'Letrado', 'letrado_apoderado']) if modo == 'plantilla' else '',
                             get_col(row, ['Tomo/Folio', 'tomo_folio'])                    if modo == 'plantilla' else '',
                             get_col(row, ['CUIT/CUIL', 'CUIT', 'cuit_cuil'])              if modo == 'plantilla' else '',
+                            es_repetido,
                         ))
 
                         if cur.fetchone():
-                            nuevos += 1
-                        else:
-                            cur.execute(
-                                "SELECT caratula, created_at::date, origen FROM expedientes WHERE numero_expte=%s",
-                                (numero_expte,)
-                            )
-                            ex = cur.fetchone()
-                            repetidos.append({
-                                'numero_expte': numero_expte,
-                                'caratula': (ex[0] or '')[:60] if ex else '',
-                                'fecha': ex[1].strftime('%d/%m/%Y') if ex else '',
-                                'origen': ex[2] if ex else '',
-                            })
+                            if es_repetido:
+                                repetidos.append({'numero_expte': numero_expte, 'caratula': caratula[:60], 'fecha': fecha_ingreso.strftime('%d/%m/%Y') if fecha_ingreso else '', 'origen': 'manual'})
+                            else:
+                                nuevos += 1
                     except Exception:
                         errores += 1
 

@@ -26,6 +26,17 @@ CREATE TABLE IF NOT EXISTS expedientes (
 
 ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS fuente VARCHAR(50);
 ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS usuario_extraccion VARCHAR(100);
+ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS es_repetido BOOLEAN DEFAULT FALSE;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'expedientes_numero_expte_key') THEN
+    ALTER TABLE expedientes DROP CONSTRAINT expedientes_numero_expte_key;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_expedientes_expte_fecha') THEN
+    ALTER TABLE expedientes ADD CONSTRAINT uq_expedientes_expte_fecha UNIQUE (numero_expte, fecha_ingreso);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS scraper_runs (
     id SERIAL PRIMARY KEY,
