@@ -4,6 +4,7 @@ from routes.main import main_bp
 from routes.scraper import scraper_bp
 from routes.expedientes import expedientes_bp
 from routes.admin import admin_bp
+from migrate_db import migrate
 import config
 
 
@@ -24,6 +25,7 @@ if __name__ == '__main__':
 
     # Inicializar tablas al arrancar
     try:
+        migrate()
         init_db()
     except Exception as e:
         print(f"Advertencia al inicializar BD: {e}")
