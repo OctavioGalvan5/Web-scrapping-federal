@@ -128,14 +128,43 @@ def importar():
         return jsonify({'error': 'El archivo debe ser .xlsx o .xls'}), 400
 
     try:
-        df = pd.read_excel(file)
-        cols = df.columns.tolist()
+        df_raw = pd.read_excel(file, header=None)
+
+        COLS_CONOCIDAS = {'número', 'numero', 'nro', 'año', 'anio', 'carátula',
+                          'caratula', 'dependencia', 'expediente'}
+
+        primera_fila = [str(v).strip().lower() for v in df_raw.iloc[0].tolist()]
+        tiene_cabecera = any(c in COLS_CONOCIDAS for c in primera_fila)
+
+        if tiene_cabecera:
+            df = pd.read_excel(file)
+            modo = 'plantilla'
+        else:
+            df = df_raw.copy()
+            df.columns = range(len(df.columns))
+            modo = 'raw'
+
+        def _str(v):
+            if pd.isna(v):
+                return ''
+            s = str(v).strip()
+            return '' if s.lower() in ('nan', 'none') else s
+
+        def parsear_expte_raw(expte_str):
+            """FSA 007039/2026 → numero_expte='FSA 007039/2026', anio='2026'"""
+            expte_str = expte_str.strip()
+            import re
+            m = re.search(r'/(\d{4})(?:/|$)', expte_str)
+            anio = m.group(1) if m else ''
+            return expte_str, anio
+
+        cols = df.columns.tolist() if modo == 'plantilla' else []
 
         def get_col(row, names):
             for n in names:
                 if n in cols:
                     v = row.get(n, '')
-                    return str(v).strip() if pd.notna(v) else ''
+                    return _str(v)
             return ''
 
         nuevos = 0
@@ -146,31 +175,45 @@ def importar():
             with conn.cursor() as cur:
                 for _, row in df.iterrows():
                     try:
-                        numero = get_col(row, ['Número', 'Numero', 'numero', 'NRO'])
-                        anio   = get_col(row, ['Año', 'Anio', 'anio', 'AÑO'])
-                        if not numero or not anio:
-                            continue
-                        numero_expte = f"{numero}/{anio}"
+                        if modo == 'raw':
+                            numero_expte = _str(row[0])
+                            if not numero_expte:
+                                continue
+                            numero_expte, anio = parsear_expte_raw(numero_expte)
+                            dependencia      = _str(row[1]) if len(row) > 1 else ''
+                            caratula         = _str(row[2]) if len(row) > 2 else ''
+                            situacion_actual = _str(row[3]) if len(row) > 3 else ''
+                            fecha_raw        = row[4] if len(row) > 4 else None
+                            fecha_ingreso    = pd.to_datetime(fecha_raw, errors='coerce')
+                            fecha_ingreso    = fecha_ingreso.date() if pd.notna(fecha_ingreso) else None
+                        else:
+                            numero = get_col(row, ['Número', 'Numero', 'numero', 'NRO'])
+                            anio   = get_col(row, ['Año', 'Anio', 'anio', 'AÑO'])
+                            if not numero or not anio:
+                                continue
+                            numero_expte     = f"{numero}/{anio}"
+                            dependencia      = get_col(row, ['Dependencia', 'dependencia'])
+                            caratula         = get_col(row, ['Carátula', 'Caratula', 'caratula'])
+                            situacion_actual = get_col(row, ['Sit. Actual', 'Situacion Actual', 'situacion_actual'])
+                            fecha_ingreso    = None
 
                         cur.execute("""
                             INSERT INTO expedientes
-                                (numero_expte, anio, caratula, jurisdiccion, dependencia,
-                                 situacion_actual, actor_nombre, letrado_apoderado,
-                                 tomo_folio, cuit_cuil, origen)
-                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'manual')
+                                (numero_expte, anio, caratula, dependencia,
+                                 situacion_actual, fecha_ingreso, origen,
+                                 jurisdiccion, actor_nombre, letrado_apoderado,
+                                 tomo_folio, cuit_cuil)
+                            VALUES (%s,%s,%s,%s,%s,%s,'manual',%s,%s,%s,%s,%s)
                             ON CONFLICT (numero_expte) DO NOTHING
                             RETURNING id
                         """, (
-                            numero_expte,
-                            anio,
-                            get_col(row, ['Carátula', 'Caratula', 'caratula']),
-                            get_col(row, ['Jurisdicción', 'Jurisdiccion', 'jurisdiccion']),
-                            get_col(row, ['Dependencia', 'dependencia']),
-                            get_col(row, ['Sit. Actual', 'Situacion Actual', 'situacion_actual']),
-                            get_col(row, ['Actor/Nombre', 'Actor', 'actor_nombre']),
-                            get_col(row, ['Letrado/Apoderado', 'Letrado', 'letrado_apoderado']),
-                            get_col(row, ['Tomo/Folio', 'tomo_folio']),
-                            get_col(row, ['CUIT/CUIL', 'CUIT', 'cuit_cuil']),
+                            numero_expte, anio, caratula, dependencia,
+                            situacion_actual, fecha_ingreso,
+                            get_col(row, ['Jurisdicción', 'Jurisdiccion', 'jurisdiccion']) if modo == 'plantilla' else '',
+                            get_col(row, ['Actor/Nombre', 'Actor', 'actor_nombre'])        if modo == 'plantilla' else '',
+                            get_col(row, ['Letrado/Apoderado', 'Letrado', 'letrado_apoderado']) if modo == 'plantilla' else '',
+                            get_col(row, ['Tomo/Folio', 'tomo_folio'])                    if modo == 'plantilla' else '',
+                            get_col(row, ['CUIT/CUIL', 'CUIT', 'cuit_cuil'])              if modo == 'plantilla' else '',
                         ))
 
                         if cur.fetchone():
