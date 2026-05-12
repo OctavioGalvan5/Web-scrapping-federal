@@ -58,21 +58,26 @@ def tareas_page():
 
 @expedientes_bp.route('/datos')
 def datos():
-    where, params = _build_filters(request.args)
-    rows = query(
-        f"""
-        SELECT id, numero_expte, anio, caratula, dependencia, jurisdiccion,
-               situacion_actual, actor_nombre, letrado_apoderado, cuit_cuil,
-               fecha_ingreso::text, origen, fuente, usuario_extraccion, es_repetido, created_at
-        FROM expedientes
-        {where}
-        ORDER BY created_at DESC
-        LIMIT 1000
-        """,
-        params or None,
-    )
-    total = query(f"SELECT COUNT(*) AS n FROM expedientes {where}", params or None)[0]['n']
-    return jsonify({'data': [dict(r) for r in rows], 'total': total})
+    try:
+        where, params = _build_filters(request.args)
+        rows = query(
+            f"""
+            SELECT id, numero_expte, anio, caratula, dependencia, jurisdiccion,
+                   situacion_actual, actor_nombre, letrado_apoderado, cuit_cuil,
+                   fecha_ingreso::text, origen, fuente, usuario_extraccion, es_repetido, created_at
+            FROM expedientes
+            {where}
+            ORDER BY created_at DESC
+            LIMIT 1000
+            """,
+            params or None,
+        )
+        count_res = query(f"SELECT COUNT(*) AS n FROM expedientes {where}", params or None)
+        total = count_res[0]['n'] if count_res else 0
+        return jsonify({'data': [dict(r) for r in rows], 'total': total})
+    except Exception as e:
+        print(f"Error en /expedientes/datos: {e}")
+        return jsonify({'error': str(e), 'data': [], 'total': 0}), 500
 
 
 @expedientes_bp.route('/exportar')

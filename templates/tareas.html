@@ -191,7 +191,14 @@ function getFiltros() {
 async function cargarDatos() {
   const params = getFiltros();
   const resp = await fetch('/expedientes/datos?' + params);
-  const { data, total } = await resp.json();
+  const result = await resp.json();
+
+  if (result.error) {
+    alert('Error al cargar datos: ' + result.error);
+    return;
+  }
+
+  const { data, total } = result;
   dataActual = data;
 
   document.getElementById('total_badge').textContent = `${total} expedientes`;
