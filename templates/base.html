@@ -36,6 +36,11 @@
           </a>
         </li>
         <li class="nav-item">
+          <a class="nav-link {% if '/expedientes/tareas' in request.path %}active{% endif %}" href="/expedientes/tareas">
+            <i class="bi bi-cloud-upload"></i> Tareas Federal
+          </a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link {% if '/admin' in request.path %}active{% endif %}" href="/admin/">
             <i class="bi bi-shield-lock"></i> Admin
           </a>

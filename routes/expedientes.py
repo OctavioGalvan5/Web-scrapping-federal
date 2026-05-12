@@ -37,6 +37,11 @@ def _build_filters(args):
         conditions.append("fecha_ingreso <= %s")
         params.append(args['fecha_hasta'])
 
+    if args.get('repetidos') and args['repetidos'] != 'todos':
+        is_rep = args['repetidos'] == 'si'
+        conditions.append("es_repetido = %s")
+        params.append(is_rep)
+
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     return where, params
 
@@ -44,6 +49,11 @@ def _build_filters(args):
 @expedientes_bp.route('/')
 def expedientes_page():
     return render_template('expedientes.html')
+
+
+@expedientes_bp.route('/tareas')
+def tareas_page():
+    return render_template('tareas.html')
 
 
 @expedientes_bp.route('/datos')

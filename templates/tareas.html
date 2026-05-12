@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+{% block title %}Tareas Federal - PJN{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4><i class="bi bi-cloud-upload"></i> Vincular Tareas Federal</h4>
+  <span class="badge bg-primary">API: Tareas Federal</span>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small fw-bold">Búsqueda</label>
+        <input type="text" id="f_busqueda" class="form-control form-control-sm" placeholder="Número, carátula, actor...">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Dependencia</label>
+        <input type="text" id="f_dependencia" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Repetidos</label>
+        <select id="f_repetidos" class="form-select form-select-sm">
+          <option value="todos">Todos</option>
+          <option value="si">Solo Repetidos</option>
+          <option value="no" selected>Ocultar Repetidos</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-bold">Origen</label>
+        <select id="f_origen" class="form-select form-select-sm">
+          <option value="todos">Todos</option>
+          <option value="scraper">Scraper</option>
+          <option value="manual">Manual</option>
+        </select>
+      </div>
+      <div class="col-md-1">
+        <label class="form-label small fw-bold">Desde</label>
+        <input type="date" id="f_fecha_desde" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-1">
+        <label class="form-label small fw-bold">Hasta</label>
+        <input type="date" id="f_fecha_hasta" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-1 d-flex gap-1">
+        <button class="btn btn-primary btn-sm w-100" onclick="cargarDatos()">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Tabla de Selección -->
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-check-square"></i> Seleccionar Expedientes</span>
+        <span id="total_badge" class="badge bg-secondary">0 expedientes</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive" style="max-height: 600px;">
+          <table class="table table-sm table-hover mb-0" id="tabla_tareas">
+            <thead class="table-dark sticky-top">
+              <tr>
+                <th width="40"><input type="checkbox" id="select_all" onchange="toggleSelectAll()"></th>
+                <th>Expediente</th>
+                <th>Carátula</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody id="tbody_tareas">
+              <tr><td colspan="4" class="text-center py-4 text-muted">Use los filtros para buscar</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de Envío -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
+      <div class="card-header bg-primary text-white fw-bold">
+        <i class="bi bi-send-check"></i> Configuración de Envío
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info py-2 small">
+          <i class="bi bi-info-circle"></i> Se crearán tareas en la plataforma <strong>Tareas Federal</strong> para los expedientes seleccionados.
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Fecha Límite de la Tarea</label>
+          <input type="date" id="api_due_date" class="form-control form-control-sm">
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Prioridad</label>
+          <select id="api_priority" class="form-select form-select-sm">
+            <option value="Normal">Normal</option>
+            <option value="Media">Media</option>
+            <option value="Urgente">Urgente</option>
+          </select>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Área</label>
+          <select id="api_area" class="form-select form-select-sm">
+            <option value="1" selected>Federal (ID: 1)</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Asignar a Persona(s)</label>
+          <div class="border rounded p-2 bg-light" style="max-height: 150px; overflow-y: auto;">
+            <div class="form-check small">
+              <input class="form-check-input user-check" type="checkbox" value="2" id="u2">
+              <label class="form-check-label" for="u2">Mariela</label>
+            </div>
+            <div class="form-check small">
+              <input class="form-check-input user-check" type="checkbox" value="3" id="u3">
+              <label class="form-check-label" for="u3">Giuliana</label>
+            </div>
+            <div class="form-check small">
+              <input class="form-check-input user-check" type="checkbox" value="4" id="u4">
+              <label class="form-check-label" for="u4">Jose</label>
+            </div>
+            <div class="form-check small">
+              <input class="form-check-input user-check" type="checkbox" value="5" id="u5">
+              <label class="form-check-label" for="u5">Julia</label>
+            </div>
+            <div class="form-check small">
+              <input class="form-check-input user-check" type="checkbox" value="6" id="u6">
+              <label class="form-check-label" for="u6">Pablo</label>
+            </div>
+            <div class="form-check small">
+              <input class="form-check-input user-check" type="checkbox" value="7" id="u7">
+              <label class="form-check-label" for="u7">Valentina</label>
+            </div>
+            <div class="form-check small">
+              <input class="form-check-input user-check" type="checkbox" value="19" id="u19">
+              <label class="form-check-label" for="u19">Carolina</label>
+            </div>
+            <div class="form-check small">
+              <input class="form-check-input user-check" type="checkbox" value="8" id="u8">
+              <label class="form-check-label" for="u8">admin</label>
+            </div>
+          </div>
+        </div>
+        
+        <hr>
+        
+        <div class="d-grid gap-2">
+          <button id="btn_subir" class="btn btn-primary" onclick="subirTareas()">
+            <i class="bi bi-cloud-arrow-up"></i> Subir a Tareas Federal
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="limpiarSeleccion()">
+            Limpiar Selección
+          </button>
+        </div>
+        
+        <div id="api_result" class="mt-3" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let dataActual = [];
+
+// Setear fecha de mañana por defecto
+const mañana = new Date();
+mañana.setDate(mañana.getDate() + 1);
+document.getElementById('api_due_date').value = mañana.toISOString().split('T')[0];
+
+function getFiltros() {
+  return new URLSearchParams({
+    busqueda:     document.getElementById('f_busqueda').value,
+    dependencia:  document.getElementById('f_dependencia').value,
+    repetidos:    document.getElementById('f_repetidos').value,
+    origen:       document.getElementById('f_origen').value,
+    fecha_desde:  document.getElementById('f_fecha_desde').value,
+    fecha_hasta:  document.getElementById('f_fecha_hasta').value,
+  });
+}
+
+async function cargarDatos() {
+  const params = getFiltros();
+  const resp = await fetch('/expedientes/datos?' + params);
+  const { data, total } = await resp.json();
+  dataActual = data;
+
+  document.getElementById('total_badge').textContent = `${total} expedientes`;
+  document.getElementById('select_all').checked = false;
+
+  const tbody = document.getElementById('tbody_tareas');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">Sin resultados</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map((r, idx) => `
+    <tr>
+      <td><input type="checkbox" class="exp-check" data-idx="${idx}"></td>
+      <td class="fw-bold small">
+        ${r.numero_expte || ''}
+        ${r.es_repetido ? '<span class="badge bg-warning text-dark ms-1">rep</span>' : ''}
+      </td>
+      <td class="small" title="${r.caratula || ''}">${(r.caratula || '').substring(0,60)}${(r.caratula||'').length>60?'…':''}</td>
+      <td class="small">${r.fecha_ingreso ? r.fecha_ingreso.split('-').reverse().join('/') : ''}</td>
+    </tr>
+  `).join('');
+}
+
+function toggleSelectAll() {
+  const checked = document.getElementById('select_all').checked;
+  document.querySelectorAll('.exp-check').forEach(cb => cb.checked = checked);
+}
+
+function limpiarSeleccion() {
+  document.querySelectorAll('.exp-check').forEach(cb => cb.checked = false);
+  document.getElementById('select_all').checked = false;
+}
+
+async function subirTareas() {
+  const selectedIndices = Array.from(document.querySelectorAll('.exp-check:checked'))
+    .map(cb => parseInt(cb.dataset.idx));
+  
+  if (selectedIndices.length === 0) {
+    alert('Seleccione al menos un expediente');
+    return;
+  }
+  
+  const due_date = document.getElementById('api_due_date').value;
+  const priority = document.getElementById('api_priority').value;
+  const area_id = document.getElementById('api_area').value;
+  
+  // Obtener IDs de usuarios seleccionados
+  const selectedUserIds = Array.from(document.querySelectorAll('.user-check:checked'))
+    .map(cb => cb.value)
+    .join(',');
+  
+  if (!due_date) {
+    alert('Seleccione una fecha límite');
+    return;
+  }
+  
+  const selectedExpedientes = selectedIndices.map(idx => dataActual[idx]);
+  const btn = document.getElementById('btn_subir');
+  const divResult = document.getElementById('api_result');
+  
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Subiendo ${selectedExpedientes.length}...`;
+  divResult.style.display = 'none';
+  
+  try {
+    const resp = await fetch('/scraper/subir_a_tareas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expedientes: selectedExpedientes,
+        due_date,
+        priority,
+        assignee_ids: selectedUserIds,
+        area_id
+      })
+    });
+    
+    const result = await resp.json();
+    divResult.style.display = 'block';
+    
+    if (resp.ok) {
+      divResult.innerHTML = `
+        <div class="alert alert-success small mb-0">
+          <strong>¡Completado!</strong><br>
+          ✅ Éxitos: ${result.exitos}<br>
+          ❌ Errores: ${result.errores}
+          ${result.mensajes_error.length ? '<br><br><span class="text-danger">Errores: ' + result.mensajes_error.join(', ') + '</span>' : ''}
+        </div>
+      `;
+      if (result.errores === 0) limpiarSeleccion();
+    } else {
+      divResult.innerHTML = `<div class="alert alert-danger small">${result.error || 'Error desconocido'}</div>`;
+    }
+  } catch (err) {
+    divResult.style.display = 'block';
+    divResult.innerHTML = `<div class="alert alert-danger small">Error de conexión: ${err}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Subir a Tareas Federal';
+  }
+}
+
+// Cargar al iniciar
+cargarDatos();
+document.getElementById('f_busqueda').addEventListener('keydown', e => { if (e.key === 'Enter') cargarDatos(); });
+</script>
+{% endblock %}

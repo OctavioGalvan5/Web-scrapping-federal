@@ -134,3 +134,67 @@ def stream(task_id):
         mimetype='text/event-stream',
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
     )
+
+
+@scraper_bp.route('/subir_a_tareas', methods=['POST'])
+def subir_a_tareas():
+    from scraper_core.api_tareas_client import TareasFederalClient
+    
+    d = request.json
+    expedientes = d.get('expedientes', [])
+    api_key = "1317c01cc07232721f8d6113a3a645667dd116130d39800e712c2a09aef726de" # Mariela's key
+    base_url = "https://tareasfederal.cajadeabogadossalta.org"
+    
+    due_date = d.get('due_date')
+    priority = d.get('priority', 'Normal')
+    area_id = d.get('area_id')
+    try:
+        if area_id:
+            area_id = int(area_id)
+        else:
+            area_id = None
+    except:
+        area_id = None
+    
+    # Manejar assignee_ids (convertir de string "1,2,3" a lista de ints [1,2,3])
+    assignee_ids_raw = d.get('assignee_ids', '')
+    assignee_ids = []
+    if assignee_ids_raw:
+        try:
+            if isinstance(assignee_ids_raw, str):
+                assignee_ids = [int(x.strip()) for x in assignee_ids_raw.split(',') if x.strip().isdigit()]
+            elif isinstance(assignee_ids_raw, list):
+                assignee_ids = [int(x) for x in assignee_ids_raw if str(x).strip().isdigit()]
+        except:
+            pass
+    
+    if not expedientes:
+        return jsonify({'error': 'No se seleccionaron expedientes'}), 400
+    if not due_date:
+        return jsonify({'error': 'Debe seleccionar una fecha límite'}), 400
+
+    client = TareasFederalClient(api_key, base_url)
+    exitos = 0
+    errores = 0
+    mensajes_error = []
+
+    for exp in expedientes:
+        res = client.crear_tarea(
+            title=exp['numero_expte'],
+            due_date=due_date,
+            description=exp['caratula'],
+            priority=priority,
+            assignee_ids=assignee_ids,
+            area_id=area_id
+        )
+        if res and res.get('success'):
+            exitos += 1
+        else:
+            errores += 1
+            mensajes_error.append(res.get('error') if res else "Error desconocido")
+
+    return jsonify({
+        'exitos': exitos,
+        'errores': errores,
+        'mensajes_error': mensajes_error[:5] # Devolver solo los primeros 5 errores
+    })
