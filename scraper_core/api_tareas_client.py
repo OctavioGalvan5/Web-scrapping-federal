@@ -40,14 +40,22 @@ class TareasFederalClient:
             payload["area_id"] = area_id
 
         try:
+            print(f"[API] POST {self.endpoint}")
+            print(f"[API] Payload: {json.dumps(payload, ensure_ascii=False)}")
             response = requests.post(self.endpoint, headers=self.headers, json=payload, timeout=30)
+            print(f"[API] Status: {response.status_code}")
+            print(f"[API] Response headers: {dict(response.headers)}")
+            print(f"[API] Response body: {response.text[:500]}")
             if response.status_code == 201:
                 return response.json()
             else:
-                logger.error(f"Error al crear tarea: {response.status_code} - {response.text}")
-                return {"error": response.text, "status_code": response.status_code}
+                return {
+                    "error": f"HTTP {response.status_code} — {response.text[:300]}",
+                    "status_code": response.status_code,
+                    "url": self.endpoint,
+                }
         except Exception as e:
-            logger.error(f"Excepcion al conectar con API Tareas: {e}")
+            print(f"[API] Excepción: {e}")
             return {"error": str(e)}
 
     def test_connection(self):

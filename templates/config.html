@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Configuración - PJN{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4><i class="bi bi-gear"></i> Configuración</h4>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-dark text-white fw-bold">
+        <i class="bi bi-chat-left-text"></i> Prompt de Análisis IA
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          Este prompt se usa al analizar los documentos de cada expediente. Podés usar las siguientes variables:
+        </p>
+        <div class="mb-3 d-flex flex-wrap gap-2">
+          <code class="bg-light px-2 py-1 rounded">{numero_expte}</code>
+          <code class="bg-light px-2 py-1 rounded">{causa}</code>
+          <code class="bg-light px-2 py-1 rounded">{pdfs_str}</code>
+          <code class="bg-light px-2 py-1 rounded">{tabla_str}</code>
+        </div>
+        <textarea id="prompt_textarea" class="form-control font-monospace"
+                  rows="14" spellcheck="false">{{ prompt }}</textarea>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <span id="save_status" class="small text-muted"></span>
+          <button class="btn btn-primary" onclick="guardar()">
+            <i class="bi bi-floppy"></i> Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-secondary text-white fw-bold">
+        <i class="bi bi-info-circle"></i> Variables disponibles
+      </div>
+      <div class="card-body small">
+        <dl class="mb-0">
+          <dt><code>{numero_expte}</code></dt>
+          <dd class="text-muted mb-3">Número del expediente (ej: <em>7039/2026</em>)</dd>
+
+          <dt><code>{causa}</code></dt>
+          <dd class="text-muted mb-3">Carátula del expediente</dd>
+
+          <dt><code>{pdfs_str}</code></dt>
+          <dd class="text-muted mb-3">Texto extraído de todos los PDFs descargados</dd>
+
+          <dt><code>{tabla_str}</code></dt>
+          <dd class="text-muted mb-0">Listado de actuaciones recientes (fecha | oficina | tipo | descripción)</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function guardar() {
+  const prompt = document.getElementById('prompt_textarea').value.trim();
+  const status = document.getElementById('save_status');
+
+  if (!prompt) { alert('El prompt no puede estar vacío'); return; }
+
+  status.textContent = 'Guardando...';
+  status.className = 'small text-muted';
+
+  const resp = await fetch('/config/guardar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt })
+  });
+  const data = await resp.json();
+
+  if (resp.ok) {
+    status.textContent = '✅ Guardado correctamente';
+    status.className = 'small text-success';
+  } else {
+    status.textContent = '❌ ' + (data.error || 'Error al guardar');
+    status.className = 'small text-danger';
+  }
+}
+
+// Ctrl+S para guardar
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    guardar();
+  }
+});
+</script>
+{% endblock %}

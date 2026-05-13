@@ -171,8 +171,8 @@ async function iniciarProceso(tipo) {
   const usuario    = document.getElementById('usuario').value.trim();
   const password   = document.getElementById('password').value.trim();
   const headless   = document.getElementById('headless').checked;
-  const gemini_api = document.getElementById('gemini_api').value.trim();
-  const captcha_api= document.getElementById('captcha_api').value.trim();
+  const gemini_api  = document.getElementById('gemini_api').value.trim();
+  const captcha_api = document.getElementById('captcha_api').value.trim();
 
   if (!usuario || !password) { alert('Ingrese usuario y contraseña'); return; }
 
@@ -185,9 +185,9 @@ async function iniciarProceso(tipo) {
     labelActivo = 'Extrayendo...';
     colorActivo = 'success';
   } else if (tipo === 'analisis') {
-    if (!gemini_api || !captcha_api) { alert('Ingrese las API Keys'); return; }
+    if (!fecha) { alert('Ingrese una fecha'); return; }
     url = '/scraper/iniciar_analisis';
-    payload = { usuario, password, headless, gemini_api, captcha_api };
+    payload = { usuario, password, headless, fecha };
     labelActivo = 'Analizando con IA...';
     colorActivo = 'primary';
   } else {

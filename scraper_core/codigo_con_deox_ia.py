@@ -149,11 +149,26 @@ def normalizar_fecha_para_excel(fecha):
         return fecha
 
 def comparar_fechas_mejorado(fecha1, fecha2):
-    """Compara dos fechas normalizando ambas"""
+    """Compara dos fechas.
+    fecha1: extraída del web en formato M/D/YYYY (US)
+    fecha2: objetivo del usuario en formato DD/MM/YYYY (AR)
+    """
+    from datetime import datetime
+
+    def parse_fecha(f, fmt):
+        try:
+            return datetime.strptime(f.strip(), fmt)
+        except ValueError:
+            return None
+
     try:
-        fecha_norm1 = normalizar_fecha_para_comparacion(fecha1)
-        fecha_norm2 = normalizar_fecha_para_comparacion(fecha2)
-        return fecha_norm1 == fecha_norm2
+        # El web devuelve M/D/YYYY; el objetivo es DD/MM/YYYY
+        d1 = parse_fecha(fecha1, "%m/%d/%Y")
+        d2 = parse_fecha(fecha2, "%d/%m/%Y")
+        if d1 and d2:
+            return d1 == d2
+        # fallback: normalizar y comparar como string
+        return normalizar_fecha_para_comparacion(fecha1) == normalizar_fecha_para_comparacion(fecha2)
     except Exception as e:
         print(f"   ⚠️ Error comparando fechas: {str(e)}")
         return False
@@ -976,8 +991,6 @@ def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, hea
         options.add_argument("--disable-plugins")
         options.add_argument("--disable-images")
         options.add_argument("--disable-setuid-sandbox")
-        options.add_argument("--disable-software-rasterizer")
-        options.add_argument("--single-process")
     else:
         print("🖥️ Modo NORMAL activado - El navegador será visible")
         options.add_argument("--start-maximized")
@@ -1204,8 +1217,6 @@ def analizar_expedientes_individuales(usuario, password, headless=True, gemini_a
     if headless:
         options.add_argument('--headless=new')
         options.add_argument('--disable-setuid-sandbox')
-        options.add_argument('--disable-software-rasterizer')
-        options.add_argument('--single-process')
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
@@ -2266,6 +2277,260 @@ def mostrar_resumen_final(filas_consultas, filas_notificaciones, filas_deox, fec
     print("\n✅ Proceso completado exitosamente")
     print("📂 Los datos han sido guardados en 'expedientes.xlsx'")
     print("="*80)
+
+
+# ==================== ANÁLISIS INLINE POST-EXTRACCIÓN ====================
+
+def _extraer_texto_pdf(url_pdf, cookies=None):
+    """Descarga un PDF (autenticado si se pasan cookies), extrae texto y elimina el temporal."""
+    nombre_tmp = f"_tmp_analisis_{abs(hash(url_pdf)) % 100000}.pdf"
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        resp = requests.get(url_pdf, headers=headers, cookies=cookies, timeout=60, stream=True)
+        resp.raise_for_status()
+        with open(nombre_tmp, 'wb') as f:
+            for chunk in resp.iter_content(8192):
+                f.write(chunk)
+        texto = ''
+        with pdfplumber.open(nombre_tmp) as pdf:
+            for page in pdf.pages:
+                t = page.extract_text()
+                if t:
+                    texto += t + '\n'
+        return texto.strip() if texto.strip() else None
+    except Exception as e:
+        print(f"      ⚠️  Error descargando PDF: {e}")
+        return None
+    finally:
+        if os.path.exists(nombre_tmp):
+            try:
+                os.remove(nombre_tmp)
+            except Exception:
+                pass
+
+
+def analizar_expedientes_nuevos(expedientes_nuevos, openai_api_key, usuario, password, headless=True):
+    """
+    Fase 2 de la extracción: hace login en el portal PJN, navega a Consultas,
+    abre Nueva Consulta Pública y para cada expediente nuevo del día extrae
+    la tabla de movimientos y los PDFs, haciendo UNA llamada a OpenAI por expediente.
+    """
+    if not expedientes_nuevos:
+        return
+    if not openai_api_key:
+        print("\n⚠️  Sin API Key de OpenAI — se omite análisis de expedientes")
+        return
+
+    from openai import OpenAI
+    client = OpenAI(api_key=openai_api_key)
+
+    print("\n" + "="*60)
+    print(f"🤖 ANÁLISIS IA — {len(expedientes_nuevos)} EXPEDIENTE(S)")
+    print("="*60)
+
+    options = Options()
+    if headless:
+        options.add_argument('--headless=new')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--window-size=1920,1080')
+        options.add_argument('--disable-setuid-sandbox')
+    else:
+        options.add_argument('--start-maximized')
+    options.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_argument('--disable-web-security')
+    options.add_experimental_option('excludeSwitches', ['enable-logging', 'enable-automation'])
+    options.add_experimental_option('useAutomationExtension', False)
+
+    try:
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        if headless:
+            driver.set_page_load_timeout(60)
+            driver.implicitly_wait(10)
+        print("✅ Navegador iniciado")
+    except Exception as e:
+        print(f"❌ Error iniciando navegador para análisis: {e}")
+        return
+
+    try:
+        # ── Login (igual que en filtrar_por_fecha) ──────────────────────────
+        print("🌐 Navegando al portal PJN...")
+        driver.get("https://portalpjn.pjn.gov.ar/")
+        time.sleep(3)
+        WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.ID, "username")))
+        print("🔐 Realizando login...")
+        driver.find_element(By.ID, "username").send_keys(usuario)
+        driver.find_element(By.ID, "password").send_keys(password)
+        driver.find_element(By.ID, "kc-login").click()
+        time.sleep(5)
+        print("✅ Login completado")
+
+        # ── Abrir pestaña de Consultas ───────────────────────────────────────
+        print("📂 Abriendo sección Consultas...")
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.XPATH, "//span[text()='Consultas']"))
+        )
+        driver.find_element(By.XPATH, "//span[text()='Consultas']").click()
+        WebDriverWait(driver, 15).until(lambda d: len(d.window_handles) > 1)
+        driver.switch_to.window(driver.window_handles[-1])
+        print("✅ Pestaña Consultas abierta\n")
+
+        # ── Procesar cada expediente ─────────────────────────────────────────
+        for i, expte in enumerate(expedientes_nuevos, 1):
+            numero = str(expte.get('numero_expediente', '')).strip()
+            anio   = str(expte.get('ano_expediente', '')).strip()
+            causa  = expte.get('causa', '')
+
+            if not numero or not anio:
+                continue
+
+            numero_expte = f"{numero}/{anio}"
+            print(f"[{i}/{len(expedientes_nuevos)}] {numero_expte} — {causa[:60]}")
+
+            try:
+                # Ir a Nueva Consulta Pública
+                nueva_consulta = WebDriverWait(driver, 15).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "//a[contains(text(), 'Nueva Consulta')]")
+                    )
+                )
+                nueva_consulta.click()
+
+                WebDriverWait(driver, 15).until(
+                    EC.presence_of_element_located((By.ID, "formPublica:numero"))
+                )
+
+                # Seleccionar FSA
+                Select(driver.find_element(By.ID, "formPublica:camaraNumAni")).select_by_value("24")
+
+                # Ingresar número y año
+                campo_num = driver.find_element(By.ID, "formPublica:numero")
+                campo_num.clear()
+                campo_num.send_keys(numero)
+
+                campo_anio = driver.find_element(By.ID, "formPublica:anio")
+                campo_anio.clear()
+                campo_anio.send_keys(anio)
+
+                # Buscar (sin captcha porque estamos logueados)
+                driver.find_element(By.ID, "formPublica:buscarPorNumeroButton").click()
+                time.sleep(3)
+
+                # Verificar error
+                try:
+                    err = WebDriverWait(driver, 4).until(
+                        EC.visibility_of_element_located((By.CSS_SELECTOR, "div.ui-messages-error-summary"))
+                    )
+                    print(f"   ⚠️  {err.text.strip()}")
+                    continue
+                except TimeoutException:
+                    pass
+
+                # Esperar tabla de actuaciones
+                try:
+                    WebDriverWait(driver, 15).until(
+                        EC.presence_of_element_located((By.ID, "expediente:action-table"))
+                    )
+                except TimeoutException:
+                    print(f"   ⚠️  No se encontró tabla de actuaciones")
+                    continue
+
+                # Extraer movimientos y PDFs
+                # Estructura real: col0=botones, col1=oficina, col2=fecha, col3=tipo, col4=desc
+                movimientos = []
+                textos_pdf  = []
+
+                # Cookies de sesión para descargar PDFs autenticados
+                cookies = {c['name']: c['value'] for c in driver.get_cookies()}
+
+                tabla = driver.find_element(By.ID, "expediente:action-table")
+                for fila in tabla.find_elements(By.TAG_NAME, "tr")[1:]:
+                    celdas = fila.find_elements(By.TAG_NAME, "td")
+                    if len(celdas) < 5:
+                        continue
+                    oficina_m = celdas[1].text.strip()
+                    fecha_m   = celdas[2].text.strip()
+                    tipo_m    = celdas[3].text.strip()
+                    desc_m    = celdas[4].text.strip()
+                    movimientos.append(f"{fecha_m} | {oficina_m} | {tipo_m} | {desc_m}")
+
+                    # Buscar link de descarga en col 0 (download=true)
+                    for a in celdas[0].find_elements(By.CSS_SELECTOR, "a[href]"):
+                        href = a.get_attribute("href") or ""
+                        if "download=true" in href:
+                            if href.startswith("/"):
+                                href = "https://scw.pjn.gov.ar" + href
+                            print(f"   📄 Descargando PDF ({tipo_m})...")
+                            texto = _extraer_texto_pdf(href, cookies)
+                            if texto:
+                                textos_pdf.append(f"[{fecha_m} — {tipo_m} — {desc_m}]\n{texto}")
+
+                print(f"   📋 {len(movimientos)} movimientos, {len(textos_pdf)} PDF(s)")
+
+                if not movimientos and not textos_pdf:
+                    print(f"   ℹ️  Sin datos para analizar")
+                    continue
+
+                # Construir prompt y llamar a OpenAI (una sola llamada por expediente)
+                tabla_str = "\n".join(movimientos) or "Sin movimientos"
+                pdfs_str  = "\n\n---\n\n".join(textos_pdf) or "Sin documentos"
+
+                # Leer prompt desde la BD (con fallback por si no está disponible)
+                prompt_template = None
+                database_url = os.environ.get('DATABASE_URL')
+                if database_url:
+                    try:
+                        import psycopg2
+                        conn_cfg = psycopg2.connect(database_url)
+                        with conn_cfg.cursor() as cur:
+                            cur.execute("SELECT value FROM app_config WHERE key = 'prompt_analisis'")
+                            row = cur.fetchone()
+                            if row:
+                                prompt_template = row[0]
+                        conn_cfg.close()
+                    except Exception:
+                        pass
+
+                if not prompt_template:
+                    prompt_template = (
+                        "Expediente: {numero_expte}\n"
+                        "Carátula: {causa}\n\n"
+                        "DOCUMENTOS DESCARGADOS:\n"
+                        "{pdfs_str}\n\n"
+                        "Hacé un resumen claro y conciso del contenido de los documentos."
+                    )
+
+                prompt = prompt_template.format(
+                    numero_expte=numero_expte,
+                    causa=causa,
+                    pdfs_str=pdfs_str[:8000],
+                    tabla_str=tabla_str,
+                )
+
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=600,
+                )
+                analisis = response.choices[0].message.content.strip()
+
+                print(f"\n   🤖 ANÁLISIS:")
+                for linea in analisis.split('\n'):
+                    print(f"      {linea}")
+                print()
+
+            except Exception as e:
+                print(f"   ❌ Error procesando {numero_expte}: {e}")
+                import traceback
+                traceback.print_exc()
+                continue
+
+    finally:
+        driver.quit()
+        print("="*60)
+        print("✅ Análisis finalizado")
 
 def guardar_datos_en_excel_analizados(df_resultado, archivo_salida):
     """

@@ -2,12 +2,31 @@ from database.db import get_db
 
 def migrate():
     print("Iniciando migración de base de datos...")
+    PROMPT_DEFAULT = (
+        "Expediente: {numero_expte}\n"
+        "Carátula: {causa}\n\n"
+        "DOCUMENTOS DESCARGADOS:\n"
+        "{pdfs_str}\n\n"
+        "Hacé un resumen claro y conciso del contenido de los documentos."
+    )
+
     commands = [
         "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS fuente VARCHAR(50);",
         "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS usuario_extraccion VARCHAR(100);",
         "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS es_repetido BOOLEAN DEFAULT FALSE;",
         "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS jurisdiccion VARCHAR(255);",
-        "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS subido_a_tareas BOOLEAN DEFAULT FALSE;"
+        "ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS subido_a_tareas BOOLEAN DEFAULT FALSE;",
+        """
+        CREATE TABLE IF NOT EXISTS app_config (
+            key   VARCHAR(100) PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+        """,
+        f"""
+        INSERT INTO app_config (key, value)
+        VALUES ('prompt_analisis', $${PROMPT_DEFAULT}$$)
+        ON CONFLICT (key) DO NOTHING;
+        """,
     ]
     
     with get_db() as conn:

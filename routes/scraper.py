@@ -86,9 +86,8 @@ def iniciar_analisis():
         target=_run_thread,
         args=(
             task_id,
-            'run_analisis.py',
-            [d['usuario'], d['password'], str(d['headless']).lower(),
-             d['gemini_api'], d['captcha_api']],
+            'run_analisis_inline.py',
+            [d['usuario'], d['password'], str(d['headless']).lower(), d['fecha']],
         ),
         daemon=True,
     ).start()
@@ -199,5 +198,6 @@ def subir_a_tareas():
     return jsonify({
         'exitos': exitos,
         'errores': errores,
-        'mensajes_error': mensajes_error[:5] # Devolver solo los primeros 5 errores
+        'mensajes_error': mensajes_error,
+        'url_usada': f"https://tareasfederal.cajadeabogadossalta.org/api/tasks",
     })

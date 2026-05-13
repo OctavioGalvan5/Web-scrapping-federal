@@ -291,12 +291,19 @@ async function subirTareas() {
     divResult.style.display = 'block';
     
     if (resp.ok) {
+      let errHtml = '';
+      if (result.mensajes_error && result.mensajes_error.length) {
+        errHtml = '<br><br><strong>Detalle de errores:</strong><ul class="mb-0 mt-1">'
+          + result.mensajes_error.map(e => `<li>${e}</li>`).join('')
+          + '</ul>';
+        if (result.url_usada) errHtml += `<br><small class="text-muted">URL: ${result.url_usada}</small>`;
+      }
       divResult.innerHTML = `
-        <div class="alert alert-success small mb-0">
+        <div class="alert ${result.errores === 0 ? 'alert-success' : 'alert-warning'} small mb-0">
           <strong>¡Completado!</strong><br>
           ✅ Éxitos: ${result.exitos}<br>
           ❌ Errores: ${result.errores}
-          ${result.mensajes_error.length ? '<br><br><span class="text-danger">Errores: ' + result.mensajes_error.join(', ') + '</span>' : ''}
+          ${errHtml}
         </div>
       `;
       if (result.errores === 0) limpiarSeleccion();
