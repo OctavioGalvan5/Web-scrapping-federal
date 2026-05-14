@@ -1546,7 +1546,7 @@ def procesar_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
         WebDriverWait(driver, 20).until(EC.presence_of_element_located(
             (By.XPATH, "//tr[contains(@class, 'MuiBox-root') and @role='row']")
         ))
-        time.sleep(3)
+        time.sleep(1)
 
         # Configurar 30 filas por página antes de extraer
         print("⚙️ Configurando 30 filas por página en DEOX...")
@@ -1557,6 +1557,7 @@ def procesar_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
             WebDriverWait(driver, 10).until(
                 lambda d: not d.find_element(By.XPATH, "//select[@aria-label='filas por página']").get_attribute('disabled')
             )
+            filas_antes = len(driver.find_elements(By.XPATH, "//tr[contains(@class, 'MuiBox-root') and @role='row']"))
             sel = Select(select_element)
             try:
                 sel.select_by_value("30")
@@ -1566,8 +1567,13 @@ def procesar_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
                 if opciones_habilitadas:
                     sel.select_by_value(opciones_habilitadas[-1].get_attribute('value'))
                     print(f"✅ Seleccionado {opciones_habilitadas[-1].get_attribute('value')} filas por página")
-            print("⏳ Esperando 5 segundos para que recargue la tabla...")
-            time.sleep(5)
+            # Esperar a que la tabla recargue (cambio en cantidad de filas o timeout de 5s)
+            try:
+                WebDriverWait(driver, 5).until(
+                    lambda d: len(d.find_elements(By.XPATH, "//tr[contains(@class, 'MuiBox-root') and @role='row']")) != filas_antes
+                )
+            except Exception:
+                pass
         except Exception as e:
             print(f"⚠️ No se pudo configurar 30 filas por página: {e}")
             print("   Continuando con la cantidad por defecto...")
@@ -1658,69 +1664,61 @@ def procesar_filas_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
             if 'expediente' in fila_proc:
                 expedientes_procesados.add(fila_proc['expediente'].strip().upper())
         
+        # Deshabilitar implicit wait durante el loop para que find_element falle rápido
+        driver.implicitly_wait(0)
+
         # Procesar solo las primeras max_filas filas
         for i in range(filas_a_procesar):
             try:
                 fila = filas[i]
-                
+
                 # Extraer fecha del aria-label (formato: "Fecha Recibido: DD/M/YYYY")
                 aria_label = fila.get_attribute("aria-label")
                 fecha_extraida = None
-                
+
                 if aria_label:
-                    # Patrón para "Fecha Recibido: DD/M/YYYY" o "Fecha Recibido: D/M/YYYY"
                     match_fecha = re.search(r'Fecha Recibido:\s*(\d{1,2}/\d{1,2}/\d{4})', aria_label)
                     if match_fecha:
                         fecha_extraida = match_fecha.group(1)
-                
+
                 print(f"   🔍 Fila DEOX {i+1}/{filas_a_procesar}:")
-                
+
                 if not fecha_extraida:
                     print(f"       ⚠️ No se pudo extraer fecha del aria-label")
                     continue
-                
+
                 print(f"       📅 Fecha extraída: {fecha_extraida}")
-                
+
                 # Usar la función de comparación mejorada
                 if comparar_fechas_mejorado(fecha_extraida, fecha_objetivo):
                     print(f"       ✅ COINCIDENCIA DE FECHA DEOX:")
                     print(f"           Extraída: '{fecha_extraida}' vs Objetivo: '{fecha_objetivo}'")
-                    
+
                     # Extraer datos del TD con descripcionMobile
                     expediente = "No disponible"
                     causa = "No disponible"
                     juzgado = "No disponible"
                     id_registro = "No disponible"
-                    
+
                     try:
-                        # Estrategia 1: Buscar TD por data-key conteniendo 'descripcion'
+                        # Estrategia 1: buscar por data-key usando find_elements (no espera si no existe)
                         td_datos = None
-                        selectores_td = [
-                            "td[data-key*='descripcionMobile']",
-                            "td[data-key*='descripcion']",
-                            "td[data-key*='Descripcion']",
-                        ]
-                        for selector in selectores_td:
-                            try:
-                                td_datos = fila.find_element(By.CSS_SELECTOR, selector)
+                        for selector in ["td[data-key*='descripcionMobile']", "td[data-key*='descripcion']", "td[data-key*='Descripcion']"]:
+                            resultados = fila.find_elements(By.CSS_SELECTOR, selector)
+                            if resultados:
+                                td_datos = resultados[0]
                                 break
-                            except:
-                                continue
-                        
-                        # Estrategia 2: Si no encontramos por data-key, buscar el TD con role='gridcell' que tenga más contenido
+
+                        # Estrategia 2: TD con role gridcell de más contenido
                         if not td_datos:
                             tds_gridcell = fila.find_elements(By.CSS_SELECTOR, "td[role='gridcell']")
                             if tds_gridcell:
-                                # Elegir el TD con más texto (el de descripción es el más largo)
                                 td_datos = max(tds_gridcell, key=lambda td: len(td.text))
-                        
-                        # Estrategia 3: Buscar cualquier TD que no sea el de fecha ni el de etiqueta
+
+                        # Estrategia 3: cualquier TD con texto largo
                         if not td_datos:
-                            all_tds = fila.find_elements(By.TAG_NAME, "td")
-                            for td in all_tds:
-                                texto_td = td.text.strip()
-                                # El TD de descripción tiene el texto más largo
-                                if len(texto_td) > 20:
+                            for td in fila.find_elements(By.TAG_NAME, "td"):
+                                if len(td.text.strip()) > 20:
                                     td_datos = td
                                     break
                         
@@ -1854,10 +1852,12 @@ def procesar_filas_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
             print(f"ℹ️ Se procesaron {filas_a_procesar} de {total_filas_disponibles} filas disponibles")
         else:
             print(f"ℹ️ Se procesaron todas las {total_filas_disponibles} filas disponibles")
-            
+
     except Exception as e:
         print(f"❌ Error general procesando filas DEOX: {str(e)}")
-    
+    finally:
+        driver.implicitly_wait(10)
+
     return filas_deox
 
 def extraer_texto_celda(celda):
