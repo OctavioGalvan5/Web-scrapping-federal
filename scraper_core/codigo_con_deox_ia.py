@@ -2,7 +2,7 @@
 """
 Scraper de Expedientes con Análisis IA - Portal PJN
 Integra extracción de expedientes y análisis individual con IA
-VERSIÓN CORREGIDA - Problemas de notificaciones y paginación solucionados
+VERSIÓN CORREGIDA - Problemas de notificaciones, paginación y fechas solucionados
 MODIFICACIÓN: Solo se cambió la función de análisis para extraer datos HTML en lugar de PDFs
 """
 
