@@ -28,6 +28,17 @@ def migrate():
         ON CONFLICT (key) DO NOTHING;
         """,
         """
+        UPDATE expedientes
+        SET numero_expte = (
+            LPAD(
+                TRIM(LEADING '0' FROM split_part(numero_expte, '/', 1)),
+                1, '0'
+            ) || '/' || split_part(numero_expte, '/', 2)
+        )
+        WHERE numero_expte ~ '^[0-9]+/[0-9]{4}$'
+          AND split_part(numero_expte, '/', 1) ~ '^0+[1-9]';
+        """,
+        """
         CREATE TABLE IF NOT EXISTS pjn_credentials (
             id         SERIAL PRIMARY KEY,
             nombre     VARCHAR(100) NOT NULL,

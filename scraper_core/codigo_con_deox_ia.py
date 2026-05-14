@@ -72,43 +72,26 @@ def extraer_numero_y_ano_expediente(expediente):
         match = re.search(patron_con_prefijo, expediente_limpio)
         
         if match:
-            prefijo = match.group(1)
-            numero = match.group(2)
+            numero = str(int(match.group(2)))  # strip leading zeros
             ano = match.group(3)
-            
-            print(f"       ✅ PATRÓN CON PREFIJO detectado:")
-            print(f"           → Prefijo: {prefijo}")
-            print(f"           → Número: {numero}")
-            print(f"           → Año: {ano}")
-            
             return numero, ano
-        
+
         # PATRÓN 2: Sin prefijo
         patron_sin_prefijo = r'^(\d{1,9})/(\d{4})(?:/.*)?$'
         match = re.search(patron_sin_prefijo, expediente_limpio)
-        
+
         if match:
-            numero = match.group(1)
+            numero = str(int(match.group(1)))  # strip leading zeros
             ano = match.group(2)
-            
-            print(f"       ✅ PATRÓN SIN PREFIJO detectado:")
-            print(f"           → Número: {numero}")
-            print(f"           → Año: {ano}")
-            
             return numero, ano
-        
+
         # PATRÓN 3: Flexible
         patron_flexible = r'(\d{1,9})/(\d{4})'
         match = re.search(patron_flexible, expediente_limpio)
-        
+
         if match:
-            numero = match.group(1)
+            numero = str(int(match.group(1)))  # strip leading zeros
             ano = match.group(2)
-            
-            print(f"       ✅ PATRÓN FLEXIBLE detectado:")
-            print(f"           → Número: {numero}")
-            print(f"           → Año: {ano}")
-            
             return numero, ano
         
         print(f"       ❌ No se pudo extraer con ningún patrón")
