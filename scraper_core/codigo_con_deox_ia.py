@@ -1537,7 +1537,6 @@ def procesar_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
             WebDriverWait(driver, 10).until(
                 lambda d: not d.find_element(By.XPATH, "//select[@aria-label='filas por página']").get_attribute('disabled')
             )
-            filas_antes = len(driver.find_elements(By.XPATH, "//tr[contains(@class, 'MuiBox-root') and @role='row']"))
             sel = Select(select_element)
             try:
                 sel.select_by_value("30")
@@ -1547,13 +1546,8 @@ def procesar_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
                 if opciones_habilitadas:
                     sel.select_by_value(opciones_habilitadas[-1].get_attribute('value'))
                     print(f"✅ Seleccionado {opciones_habilitadas[-1].get_attribute('value')} filas por página")
-            # Esperar a que la tabla recargue (cambio en cantidad de filas o timeout de 5s)
-            try:
-                WebDriverWait(driver, 5).until(
-                    lambda d: len(d.find_elements(By.XPATH, "//tr[contains(@class, 'MuiBox-root') and @role='row']")) != filas_antes
-                )
-            except Exception:
-                pass
+            # Esperar a que la tabla se estabilice (no solo que cambie)
+            _esperar_filas_estables(driver, segundos_estable=2, timeout=15)
         except Exception as e:
             print(f"⚠️ No se pudo configurar 30 filas por página: {e}")
             print("   Continuando con la cantidad por defecto...")
