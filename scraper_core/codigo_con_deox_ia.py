@@ -740,59 +740,39 @@ def analyze_legal_documents(texto_pdfs, gemini_api_key):
 # ==================== FUNCIONES CORREGIDAS ====================
 
 def ir_siguiente_pagina_notificaciones(driver):
-    """
-    NUEVA FUNCIÓN: Navega a la siguiente página de notificaciones
-    """
+    """Navega a la siguiente página de notificaciones."""
     try:
-        print("   🔄 Buscando botón 'Siguiente' en notificaciones...")
-        
-        # Estrategias para encontrar el botón siguiente en Material-UI
-        selectores_siguiente = [
-            "//button[@aria-label='Go to next page']",
-            "//button[@title='Go to next page']",
-            "//button[contains(@class, 'MuiIconButton-root') and contains(@aria-label, 'next')]",
-            "//button[contains(@class, 'MuiIconButton-root') and not(@disabled)]//svg[contains(@data-testid, 'KeyboardArrowRight')]",
-            "//div[contains(@class, 'MuiTablePagination-actions')]//button[last()]",
-            "//button[contains(@aria-label, 'siguiente')]",
-            "//button[contains(@aria-label, 'next')]"
+        # Un único XPath que cubre todos los casos MUI sin esperar
+        selectores = [
+            "//div[contains(@class,'MuiTablePagination-actions')]//button[not(@disabled)][last()]",
+            "//button[@aria-label='Go to next page' and not(@disabled)]",
+            "//button[contains(@aria-label,'next') and not(@disabled)]",
+            "//button[contains(@aria-label,'siguiente') and not(@disabled)]",
         ]
-        
-        for selector in selectores_siguiente:
-            try:
-                boton_siguiente = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, selector))
-                )
-                
-                # Verificar que no esté deshabilitado
-                if boton_siguiente.get_attribute("disabled") or "disabled" in boton_siguiente.get_attribute("class"):
-                    print(f"   ⚠️ Botón encontrado pero está deshabilitado: {selector}")
-                    continue
-                
-                # Hacer scroll al botón y hacer clic
-                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", boton_siguiente)
-                time.sleep(0.5)
-                
-                # Intentar clic normal primero
-                try:
-                    boton_siguiente.click()
-                except:
-                    # Si falla, usar JavaScript
-                    driver.execute_script("arguments[0].click();", boton_siguiente)
-                
-                print(f"   ✅ Click exitoso en botón siguiente: {selector}")
-                return True
-                
-            except TimeoutException:
-                continue
-            except Exception as e:
-                print(f"   ⚠️ Error con selector {selector}: {e}")
-                continue
-        
-        print("   ❌ No se encontró botón 'Siguiente' funcional")
-        return False
-        
+
+        driver.implicitly_wait(0)
+        boton = None
+        for selector in selectores:
+            resultados = driver.find_elements(By.XPATH, selector)
+            if resultados:
+                boton = resultados[0]
+                break
+        driver.implicitly_wait(10)
+
+        if not boton:
+            return False
+
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'});", boton)
+        try:
+            boton.click()
+        except Exception:
+            driver.execute_script("arguments[0].click();", boton)
+
+        print("   ✅ Navegando a siguiente página")
+        return True
+
     except Exception as e:
-        print(f"   ❌ Error general navegando a siguiente página: {e}")
+        print(f"   ❌ Error navegando a siguiente página: {e}")
         return False
 
 XPATH_FILAS_NOTIF = "//tr[contains(@class, 'MuiBox-root') and @role='row']"
