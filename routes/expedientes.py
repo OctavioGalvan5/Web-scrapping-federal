@@ -1,7 +1,18 @@
 import io
+import re
 import pandas as pd
 from flask import Blueprint, render_template, request, jsonify, send_file
 from database.db import query, get_db
+
+
+def normalizar_numero_expte(raw):
+    """Extrae y normaliza número de expediente eliminando prefijos y ceros iniciales.
+    'FSA 009309/2023/1' → '9309/2023', '009309/2023' → '9309/2023'
+    """
+    m = re.search(r'(\d+)/(\d{4})', str(raw).strip())
+    if not m:
+        return str(raw).strip()
+    return f"{int(m.group(1))}/{m.group(2)}"
 
 expedientes_bp = Blueprint('expedientes', __name__)
 
@@ -172,12 +183,10 @@ def importar():
             return '' if s.lower() in ('nan', 'none') else s
 
         def parsear_expte_raw(expte_str):
-            """FSA 007039/2026 → numero_expte='FSA 007039/2026', anio='2026'"""
-            expte_str = expte_str.strip()
-            import re
-            m = re.search(r'/(\d{4})(?:/|$)', expte_str)
-            anio = m.group(1) if m else ''
-            return expte_str, anio
+            """FSA 007039/2026 → numero_expte='7039/2026', anio='2026'"""
+            norm = normalizar_numero_expte(expte_str)
+            anio = norm.split('/')[1] if '/' in norm else ''
+            return norm, anio
 
         cols = df.columns.tolist() if modo == 'plantilla' else []
 
@@ -212,7 +221,7 @@ def importar():
                             anio   = get_col(row, ['Año', 'Anio', 'anio', 'AÑO'])
                             if not numero or not anio:
                                 continue
-                            numero_expte     = f"{numero}/{anio}"
+                            numero_expte = normalizar_numero_expte(f"{numero}/{anio}")
                             dependencia      = get_col(row, ['Dependencia', 'dependencia'])
                             caratula         = get_col(row, ['Carátula', 'Caratula', 'caratula'])
                             situacion_actual = get_col(row, ['Sit. Actual', 'Situacion Actual', 'situacion_actual'])
