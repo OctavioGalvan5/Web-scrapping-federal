@@ -5,6 +5,7 @@ from routes.scraper import scraper_bp
 from routes.expedientes import expedientes_bp
 from routes.admin import admin_bp
 from routes.config_bp import config_bp
+from routes.credentials_bp import credentials_bp
 from migrate_db import migrate
 import config
 
@@ -25,6 +26,7 @@ def create_app():
     app.register_blueprint(expedientes_bp, url_prefix='/expedientes')
     app.register_blueprint(admin_bp,       url_prefix='/admin')
     app.register_blueprint(config_bp,      url_prefix='/config')
+    app.register_blueprint(credentials_bp, url_prefix='/credentials')
 
     return app
 

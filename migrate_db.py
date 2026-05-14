@@ -27,6 +27,15 @@ def migrate():
         VALUES ('prompt_analisis', $${PROMPT_DEFAULT}$$)
         ON CONFLICT (key) DO NOTHING;
         """,
+        """
+        CREATE TABLE IF NOT EXISTS pjn_credentials (
+            id         SERIAL PRIMARY KEY,
+            nombre     VARCHAR(100) NOT NULL,
+            usuario    VARCHAR(150) NOT NULL,
+            password   TEXT         NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        """,
     ]
     
     with get_db() as conn:

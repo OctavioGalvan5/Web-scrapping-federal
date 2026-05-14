@@ -59,6 +59,17 @@
         <i class="bi bi-person-lock"></i> Credenciales PJN
       </div>
       <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Usuario guardado</label>
+          <div class="input-group input-group-sm">
+            <select id="cred_select" class="form-select form-select-sm" onchange="cargarCredencial()">
+              <option value="">— Ingresar manualmente —</option>
+            </select>
+            <a href="/credentials/" class="btn btn-outline-secondary btn-sm" title="Administrar usuarios">
+              <i class="bi bi-gear"></i>
+            </a>
+          </div>
+        </div>
         <div class="mb-2">
           <label class="form-label small fw-bold">Usuario</label>
           <input type="text" id="usuario" class="form-control form-control-sm">
@@ -126,6 +137,32 @@
 <script>
 let eventoSource = null;
 let procesoActivo = false;
+
+// Cargar usuarios guardados en el dropdown
+async function cargarUsuariosGuardados() {
+  try {
+    const resp = await fetch('/credentials/api/list');
+    const lista = await resp.json();
+    const sel = document.getElementById('cred_select');
+    lista.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = `${c.nombre} (${c.usuario})`;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+async function cargarCredencial() {
+  const id = document.getElementById('cred_select').value;
+  if (!id) return;
+  try {
+    const resp = await fetch(`/credentials/api/${id}/password`);
+    const data = await resp.json();
+    document.getElementById('usuario').value  = data.usuario;
+    document.getElementById('password').value = data.password;
+  } catch(e) {}
+}
 
 // Setear fecha de hoy
 document.getElementById('fecha').value = new Date().toLocaleDateString('es-AR', {
@@ -241,5 +278,7 @@ async function iniciarProceso(tipo) {
     escribir('\n❌ Se perdió la conexión con el servidor\n');
   };
 }
+
+cargarUsuariosGuardados();
 </script>
 {% endblock %}
