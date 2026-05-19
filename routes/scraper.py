@@ -181,7 +181,7 @@ def subir_a_tareas():
         res = client.crear_tarea(
             title=exp['numero_expte'],
             due_date=due_date,
-            description=f"Extraido PJN - {exp['caratula']}",
+            description=f"Extraido PJN - {exp['caratula']}" if exp.get('origen') == 'scraper' else exp['caratula'],
             priority=priority,
             assignee_ids=assignee_ids,
             area_id=area_id
