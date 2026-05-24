@@ -725,12 +725,15 @@ def analyze_legal_documents(texto_pdfs, gemini_api_key):
 def ir_siguiente_pagina_notificaciones(driver):
     """Navega a la siguiente página de notificaciones."""
     try:
-        # Un único XPath que cubre todos los casos MUI sin esperar
+        # Buscamos específicamente botones de siguiente que no estén deshabilitados.
+        # Evitamos usar [last()] porque en la última página el botón 'Siguiente' está deshabilitado
+        # y [last()][not(@disabled)] terminaría seleccionando el botón 'Anterior', causando un bucle infinito.
         selectores = [
-            "//div[contains(@class,'MuiTablePagination-actions')]//button[not(@disabled)][last()]",
-            "//button[@aria-label='Go to next page' and not(@disabled)]",
-            "//button[contains(@aria-label,'next') and not(@disabled)]",
-            "//button[contains(@aria-label,'siguiente') and not(@disabled)]",
+            "//button[.//svg[@data-testid='KeyboardArrowRightIcon'] and not(@disabled) and not(contains(@class, 'Mui-disabled'))]",
+            "//button[@aria-label='Go to next page' and not(@disabled) and not(contains(@class, 'Mui-disabled'))]",
+            "//button[contains(translate(@aria-label, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'next') and not(@disabled) and not(contains(@class, 'Mui-disabled'))]",
+            "//button[contains(translate(@aria-label, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'siguiente') and not(@disabled) and not(contains(@class, 'Mui-disabled'))]",
+            "//button[@title='Go to next page' and not(@disabled) and not(contains(@class, 'Mui-disabled'))]"
         ]
 
         driver.implicitly_wait(0)
