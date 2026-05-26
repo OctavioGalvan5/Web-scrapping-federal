@@ -802,21 +802,24 @@ def procesar_filas_notificaciones_con_paginacion(driver, fecha_objetivo, filas_c
             print(f"📋 Encontradas {len(filas)} filas de notificaciones en página {pagina_actual}")
             
             filas_pagina_actual = 0
-            
+            fechas_en_pagina = []
+
             for i, fila in enumerate(filas):
                 try:
                     # Extraer fecha del aria-label
                     aria_label = fila.get_attribute("aria-label")
                     fecha_extraida = None
-                    
+
                     if aria_label:
                         match = re.search(r'Fecha:\s*(\d{1,2}/\d{1,2}/\d{4})', aria_label)
                         if match:
                             fecha_extraida = match.group(1)
-                    
+
                     if not fecha_extraida:
                         continue
-                    
+
+                    fechas_en_pagina.append(fecha_extraida)
+
                     # Comparar fechas (usando tu función existente)
                     if comparar_fechas_mejorado(fecha_extraida, fecha_objetivo):
                         print(f"   ✅ COINCIDENCIA DE FECHA en fila {i+1}:")
@@ -854,7 +857,24 @@ def procesar_filas_notificaciones_con_paginacion(driver, fecha_objetivo, filas_c
             
             print(f"✅ Página {pagina_actual}: {filas_pagina_actual} nuevas notificaciones encontradas")
             print(f"📊 Total acumulado: {len(filas_notificaciones)} notificaciones")
-            
+
+            # Detectar si ya pasamos la fecha objetivo (notificaciones más antiguas que el objetivo)
+            if fechas_en_pagina:
+                from datetime import datetime as _dt
+                try:
+                    fecha_obj_dt = _dt.strptime(fecha_objetivo.strip(), "%d/%m/%Y")
+                    fechas_dt = []
+                    for f in fechas_en_pagina:
+                        try:
+                            fechas_dt.append(_dt.strptime(f.strip(), "%m/%d/%Y"))
+                        except Exception:
+                            pass
+                    if fechas_dt and max(fechas_dt) < fecha_obj_dt:
+                        print(f"🛑 Página {pagina_actual}: fecha más reciente ({max(fechas_dt).strftime('%d/%m/%Y')}) anterior al objetivo ({fecha_objetivo}). Finalizando.")
+                        break
+                except Exception:
+                    pass
+
             # Intentar ir a la siguiente página
             if ir_siguiente_pagina_notificaciones(driver):
                 pagina_actual += 1
