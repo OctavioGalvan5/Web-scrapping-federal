@@ -21,8 +21,12 @@
         </div>
         <div class="row g-2 mb-2">
           <div class="col">
-            <label class="form-label small fw-bold">Páginas</label>
+            <label class="form-label small fw-bold">Páginas Consultas</label>
             <input type="number" id="paginas" class="form-control form-control-sm" value="6" min="1" max="50">
+          </div>
+          <div class="col">
+            <label class="form-label small fw-bold">Páginas Notificaciones</label>
+            <input type="number" id="paginas_notif" class="form-control form-control-sm" value="5" min="1" max="50">
           </div>
           <div class="col">
             <label class="form-label small fw-bold">Filas DEOX</label>
@@ -203,8 +207,9 @@ async function iniciarProceso(tipo) {
   if (procesoActivo) return;
 
   const fecha      = document.getElementById('fecha').value.trim();
-  const paginas    = document.getElementById('paginas').value;
-  const filas_deox = document.getElementById('filas_deox').value;
+  const paginas       = document.getElementById('paginas').value;
+  const paginas_notif = document.getElementById('paginas_notif').value;
+  const filas_deox    = document.getElementById('filas_deox').value;
   const usuario    = document.getElementById('usuario').value.trim();
   const password   = document.getElementById('password').value.trim();
   const headless   = document.getElementById('headless').checked;
@@ -218,7 +223,7 @@ async function iniciarProceso(tipo) {
   if (tipo === 'extraccion') {
     if (!fecha) { alert('Ingrese una fecha'); return; }
     url = '/scraper/iniciar_extraccion';
-    payload = { fecha, paginas, usuario, password, headless, filas_deox };
+    payload = { fecha, paginas, paginas_notif, usuario, password, headless, filas_deox };
     labelActivo = 'Extrayendo...';
     colorActivo = 'success';
   } else if (tipo === 'analisis') {

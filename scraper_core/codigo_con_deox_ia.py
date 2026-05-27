@@ -781,7 +781,7 @@ def _esperar_filas_estables(driver, segundos_estable=2, timeout=25):
     return prev
 
 
-def procesar_filas_notificaciones_con_paginacion(driver, fecha_objetivo, filas_consultas):
+def procesar_filas_notificaciones_con_paginacion(driver, fecha_objetivo, filas_consultas, paginas_notif=5):
     """
     FUNCIÓN CORREGIDA: Procesa las notificaciones con paginación mejorada
     """
@@ -792,7 +792,11 @@ def procesar_filas_notificaciones_con_paginacion(driver, fecha_objetivo, filas_c
     paginas_consecutivas_sin_resultados = 0
     MAX_PAGINAS_SIN_RESULTADOS = 3
 
+    print(f"📋 Procesando hasta {paginas_notif} páginas de notificaciones")
     while True:
+        if pagina_actual > paginas_notif:
+            print(f"🛑 Límite de {paginas_notif} páginas de notificaciones alcanzado.")
+            break
         print(f"\n📄 === PROCESANDO PÁGINA {pagina_actual} DE NOTIFICACIONES ===")
 
         try:
@@ -972,7 +976,7 @@ def paginar_tabla_expediente_mejorado(driver, tabla_id, textos_extraidos):
 
 # ==================== FUNCIONES PRINCIPALES CORREGIDAS ====================
 
-def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, headless=True, filas_deox=10, gemini_api_key=None, captcha_api_key=None):
+def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, headless=True, filas_deox=10, gemini_api_key=None, captcha_api_key=None, paginas_notif=5):
     """Función principal de extracción de expedientes (VERSIÓN CORREGIDA)"""
     
     options = Options()
@@ -1037,7 +1041,7 @@ def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, hea
         
         # CORREGIDO: Procesar Notificaciones con configuración de 30 elementos
         print("\n🔔 Procesando notificaciones con configuración mejorada...")
-        filas_notificaciones = procesar_notificaciones_mejorado(driver, fecha_objetivo, filas_consultas)
+        filas_notificaciones = procesar_notificaciones_mejorado(driver, fecha_objetivo, filas_consultas, paginas_notif=paginas_notif)
         
         # Procesar DEOX
         print(f"\n📋 Procesando DEOX (máximo {filas_deox} filas)...")
@@ -1076,7 +1080,7 @@ def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, hea
         print("🔄 Cerrando navegador...")
         driver.quit()
 
-def procesar_notificaciones_mejorado(driver, fecha_objetivo, filas_consultas):
+def procesar_notificaciones_mejorado(driver, fecha_objetivo, filas_consultas, paginas_notif=5):
     """
     FUNCIÓN CORREGIDA: Procesa la sección de notificaciones con configuración de 30 elementos
     """
@@ -1129,7 +1133,7 @@ def procesar_notificaciones_mejorado(driver, fecha_objetivo, filas_consultas):
             print(f"⚠️ No se pudo configurar filas por página: {e}")
 
         # Procesar las filas de notificaciones con paginación mejorada
-        filas_notificaciones = procesar_filas_notificaciones_con_paginacion(driver, fecha_objetivo, filas_consultas)
+        filas_notificaciones = procesar_filas_notificaciones_con_paginacion(driver, fecha_objetivo, filas_consultas, paginas_notif=paginas_notif)
 
         print(f"✅ Procesamiento de notificaciones completado. Encontradas {len(filas_notificaciones)} notificaciones nuevas.")
 

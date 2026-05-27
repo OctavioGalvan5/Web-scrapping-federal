@@ -70,7 +70,7 @@ def iniciar_extraccion():
         args=(
             task_id,
             'run_extraccion.py',
-            [d['fecha'], d['paginas'], d['usuario'], d['password'],
+            [d['fecha'], d['paginas'], d.get('paginas_notif', 5), d['usuario'], d['password'],
              str(d['headless']).lower(), d['filas_deox']],
         ),
         daemon=True,

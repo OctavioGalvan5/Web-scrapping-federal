@@ -12,15 +12,16 @@ if os.environ.get('DOCKER_ENV'):
 
 from codigo_con_deox_ia import filtrar_por_fecha, analizar_expedientes_nuevos
 
-fecha       = sys.argv[1]
-paginas     = int(sys.argv[2])
-usuario     = sys.argv[3]
-password    = sys.argv[4]
-headless    = sys.argv[5].lower() == 'true'
-filas_deox  = int(sys.argv[6])
-openai_api  = os.environ.get('OPENAI_API_KEY', '')
+fecha           = sys.argv[1]
+paginas         = int(sys.argv[2])
+paginas_notif   = int(sys.argv[3])
+usuario         = sys.argv[4]
+password        = sys.argv[5]
+headless        = sys.argv[6].lower() == 'true'
+filas_deox      = int(sys.argv[7])
+openai_api      = os.environ.get('OPENAI_API_KEY', '')
 
-todos_los_datos = filtrar_por_fecha(fecha, paginas, usuario, password, headless, filas_deox)
+todos_los_datos = filtrar_por_fecha(fecha, paginas, usuario, password, headless, filas_deox, paginas_notif=paginas_notif)
 
 if not todos_los_datos:
     print("\n" + "=" * 60)
