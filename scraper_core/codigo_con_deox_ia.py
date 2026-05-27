@@ -789,6 +789,8 @@ def procesar_filas_notificaciones_con_paginacion(driver, fecha_objetivo, filas_c
     expedientes_procesados = set(f['expediente'].strip().upper() for f in filas_consultas)
 
     pagina_actual = 1
+    paginas_consecutivas_sin_resultados = 0
+    MAX_PAGINAS_SIN_RESULTADOS = 3
 
     while True:
         print(f"\n📄 === PROCESANDO PÁGINA {pagina_actual} DE NOTIFICACIONES ===")
@@ -857,6 +859,14 @@ def procesar_filas_notificaciones_con_paginacion(driver, fecha_objetivo, filas_c
             
             print(f"✅ Página {pagina_actual}: {filas_pagina_actual} nuevas notificaciones encontradas")
             print(f"📊 Total acumulado: {len(filas_notificaciones)} notificaciones")
+
+            if filas_pagina_actual == 0:
+                paginas_consecutivas_sin_resultados += 1
+                if paginas_consecutivas_sin_resultados >= MAX_PAGINAS_SIN_RESULTADOS:
+                    print(f"🛑 {MAX_PAGINAS_SIN_RESULTADOS} páginas consecutivas sin resultados. Finalizando.")
+                    break
+            else:
+                paginas_consecutivas_sin_resultados = 0
 
             # Detectar si ya pasamos la fecha objetivo (notificaciones más antiguas que el objetivo)
             if fechas_en_pagina:
