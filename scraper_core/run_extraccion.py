@@ -18,10 +18,10 @@ paginas_notif   = int(sys.argv[3])
 usuario         = sys.argv[4]
 password        = sys.argv[5]
 headless        = sys.argv[6].lower() == 'true'
-filas_deox      = int(sys.argv[7])
+paginas_deox    = int(sys.argv[7])
 openai_api      = os.environ.get('OPENAI_API_KEY', '')
 
-todos_los_datos = filtrar_por_fecha(fecha, paginas, usuario, password, headless, filas_deox, paginas_notif=paginas_notif)
+todos_los_datos = filtrar_por_fecha(fecha, paginas, usuario, password, headless, paginas_notif=paginas_notif, paginas_deox=paginas_deox)
 
 if not todos_los_datos:
     print("\n" + "=" * 60)
@@ -100,7 +100,7 @@ try:
                 INSERT INTO scraper_runs
                     (fecha_buscada, paginas, filas_deox, usuario, resultado, nuevos, repetidos, error_msg)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (fecha_dt, paginas, filas_deox, usuario, 'ok', nuevos, len(repetidos), None))
+            """, (fecha_dt, paginas, paginas_deox, usuario, 'ok', nuevos, len(repetidos), None))
 
     conn.close()
 
