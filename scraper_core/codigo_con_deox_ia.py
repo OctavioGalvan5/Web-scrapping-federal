@@ -826,8 +826,8 @@ def procesar_filas_notificaciones_con_paginacion(driver, fecha_objetivo, filas_c
 
                     fechas_en_pagina.append(fecha_extraida)
 
-                    # Comparar fechas (usando tu función existente)
-                    if comparar_fechas_mejorado(fecha_extraida, fecha_objetivo):
+                    # El aria-label usa DD/MM/YYYY igual que el usuario — comparar normalizando ceros
+                    if normalizar_fecha_para_comparacion(fecha_extraida) == normalizar_fecha_para_comparacion(fecha_objetivo):
                         print(f"   ✅ COINCIDENCIA DE FECHA en fila {i+1}:")
                         print(f"       Extraída: '{fecha_extraida}' vs Objetivo: '{fecha_objetivo}'")
                         
@@ -976,7 +976,7 @@ def paginar_tabla_expediente_mejorado(driver, tabla_id, textos_extraidos):
 
 # ==================== FUNCIONES PRINCIPALES CORREGIDAS ====================
 
-def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, headless=True, filas_deox=10, gemini_api_key=None, captcha_api_key=None, paginas_notif=5):
+def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, headless=True, filas_deox=10, gemini_api_key=None, captcha_api_key=None, paginas_notif=5, paginas_deox=3):
     """Función principal de extracción de expedientes (VERSIÓN CORREGIDA)"""
     
     options = Options()
@@ -1044,8 +1044,8 @@ def filtrar_por_fecha(fecha_objetivo, paginas_a_procesar, usuario, password, hea
         filas_notificaciones = procesar_notificaciones_mejorado(driver, fecha_objetivo, filas_consultas, paginas_notif=paginas_notif)
         
         # Procesar DEOX
-        print(f"\n📋 Procesando DEOX (máximo {filas_deox} filas)...")
-        filas_deox_resultado = procesar_deox(driver, fecha_objetivo, filas_consultas + filas_notificaciones, filas_deox)
+        print(f"\n📋 Procesando DEOX ({paginas_deox} páginas de 30 filas)...")
+        filas_deox_resultado = procesar_deox(driver, fecha_objetivo, filas_consultas + filas_notificaciones, max_paginas=paginas_deox)
         
         # Combinar todos los datos
         todos_los_datos = filas_consultas + filas_notificaciones + filas_deox_resultado
@@ -1109,12 +1109,13 @@ def procesar_notificaciones_mejorado(driver, fecha_objetivo, filas_consultas, pa
 
         # Configurar 30 filas por página
         print("⚙️ Configurando 30 filas por página...")
+        _XPATH_SELECT_NOTIF = "//select[contains(@aria-label,'ilas por p')]"
         try:
             select_element = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, "//select[@aria-label='filas por página']"))
+                EC.presence_of_element_located((By.XPATH, _XPATH_SELECT_NOTIF))
             )
             WebDriverWait(driver, 10).until(
-                lambda d: not d.find_element(By.XPATH, "//select[@aria-label='filas por página']").get_attribute('disabled')
+                lambda d: not d.find_element(By.XPATH, _XPATH_SELECT_NOTIF).get_attribute('disabled')
             )
             sel = Select(select_element)
             valor_actual = sel.first_selected_option.get_attribute('value')
@@ -1520,8 +1521,8 @@ def procesar_consultas(driver, fecha_objetivo, filas_consultas):
     
     return filas_encontradas
 
-def procesar_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
-    """Procesa la sección de DEOX - ACTUALIZADO para nueva estructura MUI"""
+def procesar_deox(driver, fecha_objetivo, filas_procesadas, max_paginas=3):
+    """Procesa la sección de DEOX con paginación - procesa 30 filas por página"""
     ventana_original = driver.current_window_handle
     pestaña_abierta = False
     filas_deox = []
@@ -1550,12 +1551,13 @@ def procesar_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
 
         # Configurar 30 filas por página antes de extraer
         print("⚙️ Configurando 30 filas por página en DEOX...")
+        _XPATH_SELECT_DEOX = "//select[contains(@aria-label,'ilas por p')]"
         try:
             select_element = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, "//select[@aria-label='filas por página']"))
+                EC.presence_of_element_located((By.XPATH, _XPATH_SELECT_DEOX))
             )
             WebDriverWait(driver, 10).until(
-                lambda d: not d.find_element(By.XPATH, "//select[@aria-label='filas por página']").get_attribute('disabled')
+                lambda d: not d.find_element(By.XPATH, _XPATH_SELECT_DEOX).get_attribute('disabled')
             )
             sel = Select(select_element)
             try:
@@ -1566,14 +1568,40 @@ def procesar_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
                 if opciones_habilitadas:
                     sel.select_by_value(opciones_habilitadas[-1].get_attribute('value'))
                     print(f"✅ Seleccionado {opciones_habilitadas[-1].get_attribute('value')} filas por página")
-            # Esperar a que la tabla se estabilice (no solo que cambie)
             _esperar_filas_estables(driver, segundos_estable=2, timeout=15)
         except Exception as e:
             print(f"⚠️ No se pudo configurar 30 filas por página: {e}")
             print("   Continuando con la cantidad por defecto...")
 
-        # Procesar las filas de DEOX con límite
-        filas_deox = procesar_filas_deox(driver, fecha_objetivo, filas_procesadas, max_filas)
+        # Set de deduplicación compartido entre páginas
+        expedientes_procesados = set(
+            f['expediente'].strip().upper() for f in filas_procesadas if 'expediente' in f
+        )
+
+        # Paginación: procesar hasta max_paginas páginas
+        print(f"📋 Procesando hasta {max_paginas} páginas de DEOX")
+        pagina_actual = 1
+        while True:
+            if pagina_actual > max_paginas:
+                print(f"🛑 Límite de {max_paginas} páginas DEOX alcanzado.")
+                break
+
+            print(f"\n📄 === PROCESANDO PÁGINA {pagina_actual} DE DEOX ===")
+            nuevas = procesar_filas_deox(driver, fecha_objetivo, expedientes_procesados)
+            filas_deox.extend(nuevas)
+            print(f"✅ Página {pagina_actual}: {len(nuevas)} nuevos registros DEOX")
+            print(f"📊 Total acumulado: {len(filas_deox)} registros DEOX")
+
+            if pagina_actual >= max_paginas:
+                break
+
+            if ir_siguiente_pagina_notificaciones(driver):
+                pagina_actual += 1
+                time.sleep(2)
+                _esperar_filas_estables(driver)
+            else:
+                print("🛑 No hay más páginas DEOX o no se pudo navegar. Finalizando.")
+                break
 
         print(f"✅ Procesamiento de DEOX completado. Encontradas {len(filas_deox)} registros nuevos.")
 
@@ -1616,8 +1644,11 @@ def procesar_filas_pagina(driver, fecha_objetivo):
                     estado = celdas[3].text.strip()
                     fecha = celdas[4].text.strip()
                     
-                    # Usar la función de comparación mejorada
-                    if comparar_fechas_mejorado(fecha, fecha_objetivo):
+                    # La tabla de Consultas usa formato D/MM/YYYY igual que el usuario
+                    # Comparar normalizando ceros iniciales para evitar falsos negativos
+                    fecha_norm = normalizar_fecha_para_comparacion(fecha)
+                    objetivo_norm = normalizar_fecha_para_comparacion(fecha_objetivo)
+                    if fecha_norm == objetivo_norm:
                         fila_datos = {
                             'expediente': expediente,
                             'juzgado': juzgado,
@@ -1627,7 +1658,7 @@ def procesar_filas_pagina(driver, fecha_objetivo):
                             'fuente': 'Consultas'
                         }
                         filas_encontradas.append(fila_datos)
-                        
+
                         print(f"   ✓ COINCIDENCIA ENCONTRADA:")
                         print(f"     Fecha en tabla: '{fecha}' vs Fecha objetivo: '{fecha_objetivo}'")
                         print(f"     {expediente} | {juzgado} | {causa[:50]}... | {estado}")
@@ -1641,28 +1672,20 @@ def procesar_filas_pagina(driver, fecha_objetivo):
     
     return filas_encontradas
 
-def procesar_filas_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
-    """Procesa las filas de DEOX - ACTUALIZADO para nueva estructura MUI"""
+def procesar_filas_deox(driver, fecha_objetivo, expedientes_procesados):
+    """Procesa todas las filas de la página actual de DEOX. expedientes_procesados es un set mutable compartido."""
     filas_deox = []
-    
+
     try:
         filas = driver.find_elements(By.XPATH, "//tr[contains(@class, 'MuiBox-root') and @role='row']")
         total_filas_disponibles = len(filas)
-        filas_a_procesar = min(max_filas, total_filas_disponibles)
-        
-        print(f"📋 Encontradas {total_filas_disponibles} filas de DEOX disponibles")
-        print(f"🎯 Procesando las primeras {filas_a_procesar} filas (límite: {max_filas})")
-        
-        expedientes_procesados = set()
-        for fila_proc in filas_procesadas:
-            if 'expediente' in fila_proc:
-                expedientes_procesados.add(fila_proc['expediente'].strip().upper())
-        
+
+        print(f"📋 Encontradas {total_filas_disponibles} filas de DEOX en esta página")
+
         # Deshabilitar implicit wait durante el loop para que find_element falle rápido
         driver.implicitly_wait(0)
 
-        # Procesar solo las primeras max_filas filas
-        for i in range(filas_a_procesar):
+        for i in range(total_filas_disponibles):
             try:
                 fila = filas[i]
 
@@ -1675,7 +1698,7 @@ def procesar_filas_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
                     if match_fecha:
                         fecha_extraida = match_fecha.group(1)
 
-                print(f"   🔍 Fila DEOX {i+1}/{filas_a_procesar}:")
+                print(f"   🔍 Fila DEOX {i+1}/{total_filas_disponibles}:")
 
                 if not fecha_extraida:
                     print(f"       ⚠️ No se pudo extraer fecha del aria-label")
@@ -1842,10 +1865,7 @@ def procesar_filas_deox(driver, fecha_objetivo, filas_procesadas, max_filas=10):
                 print(f"   ❌ Error procesando fila DEOX {i+1}: {e}")
                 continue
         
-        if total_filas_disponibles > max_filas:
-            print(f"ℹ️ Se procesaron {filas_a_procesar} de {total_filas_disponibles} filas disponibles")
-        else:
-            print(f"ℹ️ Se procesaron todas las {total_filas_disponibles} filas disponibles")
+        print(f"ℹ️ Se procesaron las {total_filas_disponibles} filas disponibles en esta página")
 
     except Exception as e:
         print(f"❌ Error general procesando filas DEOX: {str(e)}")
