@@ -10,7 +10,7 @@ if os.environ.get('DOCKER_ENV'):
     from webdriver_manager.chrome import ChromeDriverManager
     ChromeDriverManager.install = lambda self: os.environ.get('CHROMEDRIVER_PATH', '/usr/bin/chromedriver')
 
-from codigo_con_deox_ia import filtrar_por_fecha, analizar_expedientes_nuevos
+from codigo_con_deox_ia import filtrar_por_fecha
 
 fecha           = sys.argv[1]
 paginas         = int(sys.argv[2])
@@ -116,5 +116,5 @@ try:
 except Exception as e:
     print(f"❌ Error importando a base de datos: {e}")
 
-# Fase 2: análisis IA de los expedientes guardados hoy
-analizar_expedientes_nuevos(expedientes_para_analizar, openai_api, usuario, password, headless)
+# Fase 2: análisis IA (desactivado temporalmente)
+# analizar_expedientes_nuevos(expedientes_para_analizar, openai_api, usuario, password, headless)
